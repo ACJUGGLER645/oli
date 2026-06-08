@@ -780,9 +780,6 @@ retornar mejor_ruta</pre>
         <button type="button" data-target="informe.pdf" class="active">
           informe.pdf · 9 págs
         </button>
-        <button type="button" data-target="Guia_Tarea_Optimizacion_Rutas.pdf">
-          guía oficial de la actividad
-        </button>
         <span class="spacer"></span>
         <a class="openext" id="pdf-open" target="_blank" rel="noopener" href="informe.pdf">
           ↗ abrir en pestaña nueva
@@ -877,14 +874,6 @@ retornar mejor_ruta</pre>
             <td class="actions">
               <a class="pill primary" href="index.html" download>↓ Descargar</a>
               <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/index.html" target="_blank" rel="noopener">↗ Ver</a>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="ext">PDF</span><code>Guia_Tarea_Optimizacion_Rutas.pdf</code></td>
-            <td>Guía original de la actividad evaluativa.</td>
-            <td class="actions">
-              <a class="pill primary" href="Guia_Tarea_Optimizacion_Rutas.pdf" download>↓ Descargar</a>
-              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/Guia_Tarea_Optimizacion_Rutas.pdf" target="_blank" rel="noopener">↗ Ver</a>
             </td>
           </tr>
         </tbody>
@@ -1040,8 +1029,7 @@ retornar mejor_ruta</pre>
   const pdfOpen = document.getElementById('pdf-open');
   const pdfName = document.getElementById('pdf-name');
   const pdfLabels = {
-    'informe.pdf': 'informe.pdf — Informe técnico final',
-    'Guia_Tarea_Optimizacion_Rutas.pdf': 'Guia_Tarea_Optimizacion_Rutas.pdf — Guía oficial de la actividad'
+    'informe.pdf': 'informe.pdf — Informe técnico final'
   };
   pdfTabs.forEach(btn => {
     btn.addEventListener('click', () => {
