@@ -38,7 +38,7 @@
   \AtPageCenter{%
     \makebox[0pt][c]{%
       \transparent{0.08}%
-      \includegraphics[width=0.6\paperwidth,keepaspectratio]{ETITC.png}%
+      \includegraphics[width=0.6\paperwidth,keepaspectratio]{assets/ETITC.png}%
     }%
   }%
 }
@@ -55,15 +55,20 @@
 \titleformat{\section}{\Large\bfseries}{\thesection.}{0.6em}{}
 \titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
 
-% Caja para placeholder de screenshot del notebook
+% Macro de figura: si existe assets/<tag>.png lo incluye; si no, deja
+% una cajita placeholder. Permite compilar aunque falten imagenes.
 \newcommand{\screenshot}[2]{%
   \begin{figure}[h!]
   \centering
-  \fbox{\begin{minipage}[c][4.6cm][c]{0.88\linewidth}\centering
-    \texttt{[ espacio reservado para captura del notebook ]}\par
-    \vspace{6pt}
-    {\footnotesize Sustituir por una imagen guardada como \texttt{#1.png}}
-  \end{minipage}}
+  \IfFileExists{assets/#1.png}{%
+    \includegraphics[width=0.92\linewidth,totalheight=10cm,keepaspectratio]{assets/#1.png}%
+  }{%
+    \fbox{\begin{minipage}[c][4.6cm][c]{0.88\linewidth}\centering
+      \texttt{[ falta la imagen: assets/#1.png ]}\par
+      \vspace{6pt}
+      {\footnotesize Guarda la captura como \texttt{assets/#1.png} y recompila.}
+    \end{minipage}}%
+  }
   \caption{#2}
   \label{fig:#1}
   \end{figure}
