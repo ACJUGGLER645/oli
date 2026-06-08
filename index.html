@@ -189,6 +189,39 @@
   .figrow .cell{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#666}
   .figrow .cell b{display:block;font-family:var(--serif);font-size:34px;font-weight:600;letter-spacing:-0.01em;color:var(--ink);margin-bottom:4px;text-transform:none}
 
+  /* Visor PDF embebido */
+  .pdfview{margin:24px 0;border:1px solid var(--ink);background:var(--paper)}
+  .pdfview .tabs{
+    background:var(--paper-dim);border-bottom:1px solid var(--ink);
+    display:flex;font-family:var(--mono);font-size:11px;
+  }
+  .pdfview .tabs button{
+    background:none;border:none;cursor:pointer;
+    padding:12px 18px;font-family:inherit;font-size:11px;
+    text-transform:uppercase;letter-spacing:.12em;color:#555;
+    border-right:1px solid #ccc;transition:background .15s;
+  }
+  .pdfview .tabs button:hover{background:#fff}
+  .pdfview .tabs button.active{background:var(--paper);color:var(--ink);font-weight:600;position:relative}
+  .pdfview .tabs button.active::after{
+    content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--ink);
+  }
+  .pdfview .tabs .spacer{flex:1;border-right:none}
+  .pdfview .tabs .openext{
+    border-right:none;border-left:1px solid #ccc;color:var(--accent);font-weight:600;
+  }
+  .pdfview .frame{width:100%;height:720px;border:none;background:#525659;display:block}
+  .pdfview .fallback{
+    padding:32px;text-align:center;font-size:13px;color:#555;
+    background:repeating-linear-gradient(45deg,#f4f1ea,#f4f1ea 10px,#eee 10px,#eee 20px);
+  }
+  .pdfview .fallback a{font-weight:600}
+  .pdfview .meta{
+    border-top:1px solid #ccc;padding:8px 14px;background:var(--paper-dim);
+    font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.1em;
+    display:flex;justify-content:space-between;
+  }
+
   /* Botones de descarga / preview de artefactos */
   .artifact-row{
     display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 24px 0;
@@ -729,6 +762,47 @@ retornar mejor_ruta</pre>
   </div>
 </section>
 
+<!-- VISOR DE DOCUMENTOS -->
+<section>
+  <div class="wrap">
+    <div class="label rise"><span>§9 · Documentos</span><span>Visor</span></div>
+    <h2 class="rise">Documentos del proyecto.</h2>
+  </div>
+  <div class="wrap narrow">
+    <p class="rise">Los dos documentos en PDF se pueden leer aquí mismo, sin
+      necesidad de descargarlos. Si tu navegador no soporta la vista embebida
+      aparecerán enlaces para abrir o descargar el archivo.</p>
+  </div>
+
+  <div class="wrap">
+    <div class="pdfview rise" id="pdfview">
+      <div class="tabs" role="tablist">
+        <button type="button" data-target="informe.pdf" class="active">
+          informe.pdf · 9 págs
+        </button>
+        <button type="button" data-target="Guia_Tarea_Optimizacion_Rutas.pdf">
+          guía oficial de la actividad
+        </button>
+        <span class="spacer"></span>
+        <a class="openext" id="pdf-open" target="_blank" rel="noopener" href="informe.pdf">
+          ↗ abrir en pestaña nueva
+        </a>
+      </div>
+      <object id="pdf-frame" data="informe.pdf" type="application/pdf" class="frame">
+        <div class="fallback">
+          Tu navegador no puede mostrar el PDF embebido.<br>
+          <a href="informe.pdf" download>Descargar el archivo</a> o
+          <a href="informe.pdf" target="_blank" rel="noopener">abrirlo en una pestaña nueva</a>.
+        </div>
+      </object>
+      <div class="meta">
+        <span id="pdf-name">informe.pdf — Informe técnico final</span>
+        <span>Servido directamente desde el repositorio</span>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- REFERENCIAS -->
 <footer>
   <div class="wrap narrow">
@@ -959,6 +1033,39 @@ retornar mejor_ruta</pre>
     });
     mio.observe(mapWrap);
   }
+
+  // === VISOR DE PDFs (tabs) ===
+  const pdfTabs = document.querySelectorAll('#pdfview .tabs button');
+  const pdfFrame = document.getElementById('pdf-frame');
+  const pdfOpen = document.getElementById('pdf-open');
+  const pdfName = document.getElementById('pdf-name');
+  const pdfLabels = {
+    'informe.pdf': 'informe.pdf — Informe técnico final',
+    'Guia_Tarea_Optimizacion_Rutas.pdf': 'Guia_Tarea_Optimizacion_Rutas.pdf — Guía oficial de la actividad'
+  };
+  pdfTabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.target;
+      if (!target) return;
+      pdfTabs.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // Reemplazar el <object> entero para forzar recarga estable
+      const newObj = document.createElement('object');
+      newObj.id = 'pdf-frame';
+      newObj.data = target;
+      newObj.type = 'application/pdf';
+      newObj.className = 'frame';
+      newObj.innerHTML = `<div class="fallback">
+        Tu navegador no puede mostrar el PDF embebido.<br>
+        <a href="${target}" download>Descargar el archivo</a> o
+        <a href="${target}" target="_blank" rel="noopener">abrirlo en una pestaña nueva</a>.
+      </div>`;
+      const oldObj = document.getElementById('pdf-frame');
+      oldObj.parentNode.replaceChild(newObj, oldObj);
+      pdfOpen.href = target;
+      pdfName.textContent = pdfLabels[target] || target;
+    });
+  });
 
   // === VISTAS TIPO EXCEL (.head() de cada CSV) ===
   // pedidos_logiexpress_limpio.csv - primeras 10 filas
