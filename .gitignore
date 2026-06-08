@@ -1,0 +1,65 @@
+# =====================================================================
+#  .gitignore - Caso LogiExpress
+# =====================================================================
+
+# ---- Material privado de estudio (NO SUBIR) -------------------------
+sustentacion_GUIA_PRIVADA.md
+sustentacion_GUIA_PRIVADA.*
+*_PRIVADA.*
+*_PRIVATE.*
+
+# ---- Credenciales de Kaggle ----------------------------------------
+kaggle.json
+.kaggle/
+*.kaggle.json
+
+# ---- Archivos intermedios de LaTeX ---------------------------------
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.nav
+*.snm
+*.vrb
+
+# ---- Caches de Python ----------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ---- Ambientes virtuales -------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ---- Jupyter Notebook ----------------------------------------------
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# ---- IDE / Editor --------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- macOS / Windows / Linux ---------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Backups y temporales ------------------------------------------
+*.bak
+*.tmp
+*.temp
+*~

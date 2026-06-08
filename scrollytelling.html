@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Optimización de rutas de última milla · CVRP sobre Olist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\\\(',right:'\\\\)',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'$',right:'$',display:false}],throwOnError:false})"></script>
+<style>
+  :root{
+    --ink:#101113;
+    --paper:#fbfaf7;
+    --paper-dim:#ebe9e3;
+    --rule:#1a1a1a;
+    --accent:#1a4fff;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+    --serif:'Fraunces',Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--paper);color:var(--ink);font-family:var(--mono);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--ink);color:var(--paper)}
+  a{color:var(--accent);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}
+  sup{font-size:.7em}
+  em{font-style:italic}
+
+  .wrap{max-width:1200px;margin:0 auto;padding:0 32px}
+  .wrap.narrow{max-width:820px}
+
+  /* BARRA SUPERIOR */
+  .topbar{
+    position:fixed;top:0;left:0;right:0;z-index:50;
+    background:var(--paper);border-bottom:1px solid var(--ink);
+    padding:10px 32px;display:flex;justify-content:space-between;align-items:center;
+    font-size:11px;text-transform:uppercase;letter-spacing:.14em;
+  }
+  .topbar .progress{position:absolute;left:0;bottom:-1px;height:2px;background:var(--ink);width:0%}
+
+  /* CABECERA / ABSTRACT */
+  header.head{padding:120px 0 80px}
+  header.head .label{
+    font-size:11px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:32px;
+    border-top:1px solid var(--ink);padding-top:12px;display:flex;justify-content:space-between;
+  }
+  header.head h1{
+    font-family:var(--serif);font-weight:600;font-style:normal;
+    font-size:clamp(36px,5.5vw,68px);line-height:1.08;letter-spacing:-0.015em;
+    max-width:24ch;margin-bottom:32px;
+  }
+  header.head .authors{
+    font-size:13px;color:#555;margin-bottom:48px;
+  }
+  header.head .abstract{
+    font-size:16px;line-height:1.75;max-width:65ch;color:#222;
+    border-left:2px solid var(--ink);padding-left:24px;
+  }
+  header.head .abstract strong{font-weight:600}
+  header.head .keywords{
+    margin-top:48px;font-size:12px;color:#666;text-transform:uppercase;letter-spacing:.1em;
+  }
+  header.head .keywords span{display:inline-block;margin-right:18px}
+
+  /* SECCIONES */
+  section{padding:80px 0;border-top:1px solid var(--ink)}
+  section .label{
+    font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#555;
+    margin-bottom:18px;display:flex;justify-content:space-between;
+  }
+  section h2{
+    font-family:var(--serif);font-weight:600;
+    font-size:clamp(24px,3.4vw,40px);line-height:1.15;letter-spacing:-0.01em;
+    max-width:32ch;margin-bottom:28px;
+  }
+  section h3{
+    font-family:var(--serif);font-weight:600;font-size:20px;
+    margin:36px 0 12px 0;
+  }
+  section p{max-width:68ch;margin-bottom:1em;color:#222}
+  section p + p{margin-top:.6em}
+  section ul,section ol{max-width:68ch;margin:0 0 1em 1.4em;color:#222}
+  section li{margin-bottom:.4em}
+
+  /* ECUACIÓN */
+  .eq{
+    font-family:var(--serif);font-style:italic;font-size:clamp(16px,2vw,22px);
+    background:var(--paper-dim);padding:24px 28px;border:1px solid var(--ink);
+    margin:18px 0;line-height:1.6;overflow-x:auto;
+  }
+  .eq .label{
+    display:block;font-family:var(--mono);font-style:normal;font-size:10px;
+    letter-spacing:.18em;text-transform:uppercase;color:#666;margin-top:14px;
+  }
+  /* Caja "qué significa cada parte" */
+  .explain{
+    background:#eef3ff;border-left:3px solid #1a4fff;
+    padding:18px 22px;margin:14px 0 24px 0;font-size:14px;line-height:1.65;
+  }
+  .explain h4{
+    font-family:var(--mono);font-size:10px;letter-spacing:.18em;
+    text-transform:uppercase;color:#1a4fff;margin-bottom:10px;font-weight:600;
+  }
+  .explain ul{margin-left:18px}
+  .explain li{margin-bottom:6px;color:#222}
+  .explain strong{font-weight:600}
+
+  /* Vista tipo Excel para previsualizar CSVs */
+  .xls{margin:24px 0;border:1px solid #1a1a1a;background:#fff;font-family:var(--mono);font-size:11.5px}
+  .xls .xls-bar{
+    background:linear-gradient(180deg,#f0ede4,#dcd8cc);
+    border-bottom:1px solid #1a1a1a;padding:6px 12px;
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:11px;color:#333;
+  }
+  .xls .xls-bar .name{font-weight:600}
+  .xls .xls-bar .meta{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#666}
+  .xls .xls-toolbar{
+    background:#fafaf6;border-bottom:1px solid #ccc;padding:5px 10px;
+    font-size:10px;color:#555;display:flex;gap:14px;letter-spacing:.06em;
+  }
+  .xls-table-wrap{overflow-x:auto;background:#fff}
+  .xls table{width:100%;border-collapse:collapse;margin:0;font-size:11.5px;font-family:var(--mono)}
+  .xls table th, .xls table td{padding:5px 10px;border-bottom:1px solid #eee;border-right:1px solid #eee;text-align:right;background:#fff}
+  .xls table th{background:#f4f1ea;color:#333;font-weight:600;font-size:10px;letter-spacing:.05em;text-transform:none}
+  /* Columna de índice tipo Excel (1,2,3...) */
+  .xls table th.rownum, .xls table td.rownum{
+    background:#f0ede4;color:#888;text-align:center;width:36px;
+    font-weight:600;border-right:1px solid #c8c4b8;
+  }
+  /* Encabezado tipo letras A B C ... */
+  .xls table th.col{background:#e8e4d9;color:#444;text-align:center;font-weight:700;font-size:10px}
+  .xls table th.colhead{background:#f4f1ea;text-align:left;color:#222;font-weight:600;font-size:11px;font-family:var(--mono);text-transform:none;letter-spacing:0}
+  .xls table td.text{text-align:left}
+  .xls table tr:nth-child(even) td{background:#fcfbf6}
+  .xls table tr:hover td{background:#fff8dc!important}
+  .xls .xls-footer{
+    background:linear-gradient(180deg,#f0ede4,#dcd8cc);
+    border-top:1px solid #1a1a1a;padding:5px 12px;font-size:10px;color:#555;
+    display:flex;justify-content:space-between;letter-spacing:.05em;
+  }
+
+  /* TABLAS */
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px;margin:18px 0}
+  table th,table td{padding:10px 8px;text-align:right;border-bottom:1px solid #ccc}
+  table th{font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.1em;color:#555;background:var(--paper-dim)}
+  table th:first-child,table td:first-child{text-align:left}
+  table tr:last-child td{font-weight:600;border-bottom:2px solid var(--ink)}
+  caption{caption-side:bottom;text-align:left;font-size:11px;color:#666;padding:8px 0;text-transform:uppercase;letter-spacing:.1em}
+
+  /* CÓDIGO */
+  pre,.codeblock{
+    font-family:var(--mono);font-size:12.5px;line-height:1.7;
+    background:var(--ink);color:var(--paper);
+    padding:24px 28px;margin:18px 0;border:1px solid var(--ink);
+    overflow-x:auto;
+  }
+  .codeblock .c{color:#888}
+  .codeblock .k{color:#9ec5ff}
+
+  /* MAPA */
+  .map-wrap{position:relative;border:1px solid var(--ink);margin:18px 0;background:var(--paper-dim);min-height:560px}
+  #map{width:100%;height:560px;min-height:560px;background:var(--paper-dim);position:relative;z-index:1}
+  .leaflet-container{font-family:var(--mono)!important;font-size:12px!important}
+  .map-controls{
+    position:absolute;top:12px;right:12px;z-index:500;
+    background:var(--paper);border:1px solid var(--ink);padding:12px 14px;
+    font-family:var(--mono);font-size:11px;line-height:1.5;
+  }
+  .map-controls .row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .map-controls .sw{display:inline-block;width:12px;height:12px;border:1px solid var(--ink)}
+  .map-controls h4{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px;color:#555}
+  .map-controls .toggle{
+    margin-top:10px;padding-top:8px;border-top:1px solid #ddd;
+  }
+  .map-controls .toggle label{display:flex;align-items:center;gap:8px;cursor:pointer}
+  .map-caption{
+    font-size:11px;color:#666;padding:10px 12px;
+    text-transform:uppercase;letter-spacing:.1em;background:var(--paper-dim);
+    border-top:1px solid #ddd;
+  }
+
+  /* FIGURA pequeña con números */
+  .figrow{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin:24px 0;border-top:1px solid var(--ink);padding-top:24px}
+  .figrow .cell{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#666}
+  .figrow .cell b{display:block;font-family:var(--serif);font-size:34px;font-weight:600;letter-spacing:-0.01em;color:var(--ink);margin-bottom:4px;text-transform:none}
+
+  /* FOOTNOTES / refs */
+  footer{padding:60px 0 60px;border-top:1px solid var(--ink);font-size:12px;color:#555}
+  footer h4{font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink);margin-bottom:14px}
+  footer ol{margin-left:20px}
+  footer li{margin-bottom:6px}
+  footer .meta{
+    margin-top:48px;padding-top:18px;border-top:1px solid var(--ink);
+    display:flex;justify-content:space-between;
+    font-size:10px;text-transform:uppercase;letter-spacing:.18em;
+  }
+
+  /* Animaciones */
+  .rise{opacity:0;transform:translateY(16px);transition:opacity .6s ease, transform .6s ease}
+  .rise.in{opacity:1;transform:none}
+
+  @media (max-width:780px){
+    .figrow{grid-template-columns:1fr 1fr}
+    .map-controls{position:static;margin:12px}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span>ETITC · Electiva Técnica II · Ciencia de Datos</span>
+  <span>Caso aplicado · CVRP</span>
+  <div class="progress" id="progress"></div>
+</div>
+
+<!-- ENCABEZADO / ABSTRACT -->
+<header class="head">
+  <div class="wrap narrow">
+    <div class="label rise">
+      <span>Informe técnico · v1.0</span>
+      <span>São Paulo, Brasil</span>
+    </div>
+    <h1 class="rise">Optimización de rutas de última milla con restricción de capacidad sobre el dataset Olist.</h1>
+    <div class="authors rise">Programa de Tecnología en Desarrollo de Software · ETITC</div>
+    <div class="abstract rise">
+      <strong>Resumen.</strong> Una empresa ficticia (LogiExpress) debe entregar 30
+      pedidos en São Paulo desde un único depósito, sin pasarse del peso máximo que
+      carga cada vehículo. Usamos el dataset público de Olist (Kaggle) para conseguir
+      coordenadas y pesos reales. Las distancias entre puntos se calcularon con la
+      <em>fórmula de Haversine</em> (apropiada para coordenadas geográficas).
+      Demostramos con un experimento que <em>probar todas las rutas posibles</em>
+      tarda demasiado y es inviable para 30 pedidos. Por eso aplicamos dos recetas
+      sencillas: <em>vecino más cercano</em> (en cada paso vamos al pedido no
+      visitado más cercano) y <em>2-opt</em> (revertimos tramos para acortar la
+      ruta). El resultado: <strong>4 rutas factibles</strong>, distancia total de
+      <strong>161,60 km</strong>, una mejora del 4,1 % frente al ordenamiento inicial.
+    </div>
+    <div class="keywords rise">
+      <span>Palabras clave:</span>
+      <span>CVRP</span><span>TSP</span><span>Haversine</span><span>2-opt</span>
+      <span>vecino más cercano</span><span>complejidad factorial</span>
+    </div>
+  </div>
+</header>
+
+<!-- 1 · INTRODUCCIÓN -->
+<section>
+  <div class="wrap narrow">
+    <div class="label rise"><span>§1 · Planteamiento</span><span>Problema</span></div>
+    <h2 class="rise">¿Qué estamos resolviendo?</h2>
+    <p class="rise">Imagina que eres el repartidor. Te dan 30 paquetes para entregar
+      en distintos puntos de la ciudad. Sales y vuelves siempre al mismo lugar (el
+      depósito). Tu vehículo solo puede cargar hasta cierto peso, así que probablemente
+      tendrás que hacer varios viajes. La pregunta es: <em>¿cómo agrupas y ordenas las
+      entregas para manejar lo menos posible?</em></p>
+    <p class="rise">Este escenario tiene un nombre técnico: <strong>Problema de Ruteo
+      de Vehículos con Capacidad</strong> (en inglés <em>Capacitated Vehicle Routing
+      Problem</em>, CVRP). En forma resumida buscamos:</p>
+    <div class="eq rise">
+      $$\min \; \sum_{r \in R} \sum_{(i,j) \in r} c_{ij} \quad \text{con la condición} \quad \sum_{i \in r} d_i \le C, \;\; \forall\, r \in R$$
+    </div>
+    <div class="explain rise">
+      <h4>¿Qué significa cada parte?</h4>
+      <ul>
+        <li><strong>min</strong>: queremos <em>minimizar</em> (hacer lo más pequeño posible) lo que viene después.</li>
+        <li><strong>$R$</strong>: el conjunto de todas las rutas (una por vehículo).</li>
+        <li><strong>$r$</strong>: una ruta cualquiera dentro de $R$.</li>
+        <li><strong>$(i,j)$</strong>: un par de puntos consecutivos en la ruta (vamos del punto $i$ al punto $j$).</li>
+        <li><strong>$c_{ij}$</strong>: la distancia entre el punto $i$ y el punto $j$.</li>
+        <li><strong>$\sum$</strong>: símbolo de <em>suma</em>. Sumamos las distancias de todos los tramos.</li>
+        <li><strong>$d_i$</strong>: el peso del pedido $i$ (cuánto pesa lo que vamos a entregar ahí).</li>
+        <li><strong>$C$</strong>: la capacidad máxima del vehículo en kilogramos.</li>
+        <li><strong>$\forall r \in R$</strong>: "para toda ruta $r$ en $R$". Es decir: la restricción aplica a <em>todas</em> las rutas, no solo a una.</li>
+      </ul>
+      En lenguaje normal: <em>"buscamos las rutas que sumen menos kilómetros, con la condición de que ninguna se pase del peso del vehículo".</em>
+    </div>
+  </div>
+</section>
+
+<!-- 2 · DATOS -->
+<section>
+  <div class="wrap narrow">
+    <div class="label rise"><span>§2 · Fuente</span><span>Datos</span></div>
+    <h2 class="rise">¿De dónde salen los datos?</h2>
+    <p class="rise">Usamos el <em>Brazilian E-Commerce Public Dataset by Olist</em>,
+      publicado en Kaggle <sup>[1]</sup>. Olist es una marketplace de Brasil (algo
+      parecido a Mercado Libre). Publicaron un archivo abierto con casi
+      <strong>100 000 pedidos reales</strong> hechos entre 2016 y 2018. Los datos
+      están anonimizados: no hay nombres ni direcciones exactas, sólo prefijos postales.</p>
+    <p class="rise">El dataset viene en varios archivos. Para reconstruir un pedido
+      <em>completo</em> (con id, coordenadas y peso) hay que combinar cinco de ellos:</p>
+    <ul class="rise">
+      <li><code>olist_orders_dataset.csv</code> — id del pedido y su estado (entregado, cancelado, etc.).</li>
+      <li><code>olist_customers_dataset.csv</code> — cliente y prefijo postal.</li>
+      <li><code>olist_order_items_dataset.csv</code> — productos que componen cada pedido.</li>
+      <li><code>olist_products_dataset.csv</code> — peso de cada producto en gramos.</li>
+      <li><code>olist_geolocation_dataset.csv</code> — latitud y longitud asociadas a cada prefijo postal.</li>
+    </ul>
+    <p class="rise">Como cada prefijo postal cubre varias cuadras, en el dataset hay
+      muchas coordenadas distintas para el mismo prefijo. Para simplificar, calculamos
+      la mediana de latitud y longitud por prefijo (un único punto representativo).
+      El peso del pedido sale de sumar los pesos de los productos que lo componen.</p>
+    <p class="rise"><strong>Filtros aplicados:</strong> sólo pedidos entregados, sólo
+      ciudad São Paulo, peso mayor que cero, coordenadas dentro de Brasil. Sobre lo
+      que quedó tomamos una muestra aleatoria de 30 pedidos con peso entre el
+      <em>percentil 50</em> y el <em>percentil 90</em> (ni los más livianos ni los
+      más pesados). Más adelante explicamos por qué.</p>
+
+    <!-- Vista tipo Excel: pedidos_logiexpress_limpio.csv -->
+    <div class="xls rise">
+      <div class="xls-bar">
+        <span class="name">pedidos_logiexpress_limpio.csv</span>
+        <span class="meta">30 filas · 8 columnas · CSV UTF-8</span>
+      </div>
+      <div class="xls-toolbar">
+        <span>Archivo</span><span>Editar</span><span>Ver</span><span>Insertar</span>
+        <span>Formato</span><span>Datos</span><span>Herramientas</span>
+      </div>
+      <div class="xls-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="rownum"></th>
+              <th class="col">A</th><th class="col">B</th><th class="col">C</th>
+              <th class="col">D</th><th class="col">E</th><th class="col">F</th>
+              <th class="col">G</th><th class="col">H</th>
+            </tr>
+            <tr>
+              <th class="rownum">1</th>
+              <th class="colhead">Pedido_ID</th>
+              <th class="colhead">Latitud</th>
+              <th class="colhead">Longitud</th>
+              <th class="colhead">Peso_kg</th>
+              <th class="colhead">Ciudad</th>
+              <th class="colhead">Estado</th>
+              <th class="colhead">Cantidad_items</th>
+              <th class="colhead">Nodo</th>
+            </tr>
+          </thead>
+          <tbody id="xls-pedidos"></tbody>
+        </table>
+      </div>
+      <div class="xls-footer">
+        <span>Hoja 1 · pedidos</span>
+        <span>Mostrando 10 de 30 filas (.head(10))</span>
+      </div>
+    </div>
+    <p class="rise" style="font-size:12px;color:#666;margin-top:-6px">
+      <em>Figura.</em> Primeras 10 filas del archivo <code>pedidos_logiexpress_limpio.csv</code>.
+      Cada fila es un pedido con su id, ubicación, peso y nodo asignado.
+      El archivo completo tiene 30 filas y se exporta automáticamente desde el notebook.
+    </p>
+
+    <!-- Vista tipo Excel: matriz_distancias_haversine.csv -->
+    <div class="xls rise" style="margin-top:32px">
+      <div class="xls-bar">
+        <span class="name">matriz_distancias_haversine.csv</span>
+        <span class="meta">31 filas · 31 columnas · CSV UTF-8</span>
+      </div>
+      <div class="xls-toolbar">
+        <span>Archivo</span><span>Editar</span><span>Ver</span><span>Insertar</span>
+        <span>Formato</span><span>Datos</span><span>Herramientas</span>
+      </div>
+      <div class="xls-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="rownum"></th>
+              <th class="col">A</th><th class="col">B</th><th class="col">C</th>
+              <th class="col">D</th><th class="col">E</th><th class="col">F</th>
+              <th class="col">G</th>
+            </tr>
+            <tr>
+              <th class="rownum">1</th>
+              <th class="colhead">Nodo</th>
+              <th class="colhead">0</th><th class="colhead">1</th>
+              <th class="colhead">2</th><th class="colhead">3</th>
+              <th class="colhead">4</th><th class="colhead">5</th>
+            </tr>
+          </thead>
+          <tbody id="xls-matriz"></tbody>
+        </table>
+      </div>
+      <div class="xls-footer">
+        <span>Hoja 1 · matriz</span>
+        <span>Mostrando 6 × 6 (de 31 × 31) · valores en km</span>
+      </div>
+    </div>
+    <p class="rise" style="font-size:12px;color:#666;margin-top:-6px">
+      <em>Figura.</em> Vista parcial de <code>matriz_distancias_haversine.csv</code>:
+      las primeras 6 filas y 6 columnas (más el índice). La casilla
+      <code>[i,j]</code> es la distancia en kilómetros entre el nodo $i$ y el nodo
+      $j$. La matriz es simétrica y la diagonal es cero (la distancia de un nodo a
+      sí mismo es 0). El nodo 0 es el depósito.
+    </p>
+
+    <div class="figrow rise">
+      <div class="cell"><b>5</b>tablas integradas</div>
+      <div class="cell"><b>~100k</b>pedidos brutos</div>
+      <div class="cell"><b>30</b>pedidos seleccionados</div>
+      <div class="cell"><b>SP</b>ciudad objetivo</div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · HAVERSINE -->
+<section>
+  <div class="wrap narrow">
+    <div class="label rise"><span>§3 · Distancia</span><span>Geodésica</span></div>
+    <h2 class="rise">¿Cómo se mide la distancia entre dos puntos del mapa?</h2>
+    <p class="rise">La idea ingenua sería tomar la latitud y la longitud y aplicar
+      la regla de Pitágoras, como si el mapa fuera un plano. Eso está mal: la Tierra
+      es <em>curva</em>, no plana. Un grado de longitud cerca del ecuador mide más
+      kilómetros que un grado cerca de los polos, así que esa aproximación
+      acumula error.</p>
+    <p class="rise">La <strong>fórmula de Haversine</strong> <sup>[2]</sup>, con
+      más de 200 años de antigüedad, calcula la distancia <em>sobre la superficie
+      de una esfera</em> (imaginando la Tierra como una pelota perfecta):</p>
+    <div class="eq rise">
+      $$d = 2R \, \arcsin \sqrt{ \sin^2\!\left(\tfrac{\varphi_2 - \varphi_1}{2}\right) + \cos\varphi_1 \cos\varphi_2 \sin^2\!\left(\tfrac{\lambda_2 - \lambda_1}{2}\right) }$$
+    </div>
+    <div class="explain rise">
+      <h4>¿Qué significa cada símbolo?</h4>
+      <ul>
+        <li><strong>$d$</strong>: la distancia entre los dos puntos, en kilómetros. Es lo que queremos averiguar.</li>
+        <li><strong>$R$</strong>: el radio de la Tierra. Usamos $R \approx 6\,371$ km.</li>
+        <li><strong>$\varphi_1$ y $\varphi_2$</strong>: la <em>latitud</em> de cada punto (qué tan al norte o al sur), en radianes.</li>
+        <li><strong>$\lambda_1$ y $\lambda_2$</strong>: la <em>longitud</em> de cada punto (qué tan al este o al oeste), en radianes.</li>
+        <li><strong>$\sin$, $\cos$, $\arcsin$</strong>: funciones trigonométricas de secundaria (seno, coseno, arcoseno).</li>
+        <li><strong>$\sqrt{\;}$</strong>: raíz cuadrada.</li>
+      </ul>
+      Lo que hace la fórmula es resolver un triángulo dibujado sobre la superficie de la esfera y devolvernos la distancia <em>más corta</em> que se podría recorrer caminando por encima.
+    </div>
+    <p class="rise">Como tenemos 30 pedidos + 1 depósito = 31 puntos, calculamos
+      todas las distancias entre cada par y las guardamos en una <em>matriz</em>
+      (una tabla cuadrada) de $31 \times 31$ casillas. Los algoritmos que vienen
+      después solo consultan esa tabla, sin recalcular nada.</p>
+    <p class="rise"><strong>Limitación.</strong> Haversine entrega la distancia
+      <em>en línea recta</em> sobre la superficie esférica. No tiene en cuenta
+      calles, semáforos, sentidos viales ni tráfico. La distancia real recorrida
+      será mayor. Para un caso real se usaría un servicio de rutas como
+      Google Maps o OSRM.</p>
+  </div>
+</section>
+
+<!-- 4 · COMPLEJIDAD -->
+<section>
+  <div class="wrap narrow">
+    <div class="label rise"><span>§4 · Análisis</span><span>Complejidad</span></div>
+    <h2 class="rise">¿Por qué no probamos <em>todas</em> las rutas?</h2>
+    <p class="rise">La forma "perfecta" de resolver el problema sería probar todos
+      los órdenes posibles de visitar a los clientes y quedarse con el que sume
+      menos kilómetros. El problema es que la cantidad de combinaciones crece
+      monstruosamente rápido con el número de pedidos.</p>
+    <p class="rise">Si tenemos $n$ pedidos, hay $n!$ órdenes posibles (se lee
+      "$n$ factorial").</p>
+    <div class="explain rise">
+      <h4>¿Qué es $n$ factorial?</h4>
+      Multiplicar todos los números desde 1 hasta $n$. Por ejemplo:
+      <ul>
+        <li>$3! = 1 \times 2 \times 3 = 6$</li>
+        <li>$5! = 1 \times 2 \times 3 \times 4 \times 5 = 120$</li>
+        <li>$8! = 40\,320$</li>
+        <li>$30! \approx 2{,}65 \times 10^{32}$ (un 265 seguido de 30 ceros)</li>
+      </ul>
+      Aunque un computador pudiera revisar <em>mil millones</em> de rutas por segundo,
+      con 30 pedidos terminaría mucho después de que el sol se apague. Por eso esa
+      vía sólo sirve para problemas muy pequeños.
+    </div>
+    <p class="rise">En el notebook lo probamos con $n$ entre 3 y 8 pedidos. La
+      tabla muestra cómo crece el tiempo:</p>
+    <table class="rise">
+      <caption>Tabla 1. Tiempos de fuerza bruta exacta sobre subconjuntos de n pedidos.</caption>
+      <thead><tr><th>n</th><th>Permutaciones</th><th>Tiempo (s)</th><th>Distancia óptima (km)</th></tr></thead>
+      <tbody>
+        <tr><td>3</td><td>6</td><td>0.0003</td><td>58.13</td></tr>
+        <tr><td>4</td><td>24</td><td>0.0012</td><td>65.01</td></tr>
+        <tr><td>5</td><td>120</td><td>0.0063</td><td>65.80</td></tr>
+        <tr><td>6</td><td>720</td><td>0.0502</td><td>68.00</td></tr>
+        <tr><td>7</td><td>5 040</td><td>0.3036</td><td>68.07</td></tr>
+        <tr><td>8</td><td>40 320</td><td>2.7162</td><td>68.08</td></tr>
+      </tbody>
+    </table>
+    <p class="rise">Mira la columna de tiempo: con 3 pedidos tarda menos de un
+      milisegundo, con 8 pedidos ya son casi 3 segundos. Cada vez que sumamos un
+      pedido el tiempo se multiplica más o menos por $n$. Eso significa que con 30
+      pedidos no terminaría en años. Por eso necesitamos una <em>receta sencilla</em>
+      que dé una buena solución sin tener que probarlas todas. A esas recetas se
+      les llama <strong>heurísticas</strong>.</p>
+    <div class="explain rise">
+      <h4>¿Qué es una heurística?</h4>
+      Es una receta paso a paso para conseguir una solución <em>razonable</em>
+      rápidamente, sin garantizar que sea la mejor posible. Es como cuando organizas
+      tu maleta: no calculas todas las formas posibles de poner tus camisas, sólo las
+      acomodas de una manera lógica y listo. Aquí usamos dos heurísticas: <em>vecino
+      más cercano</em> y <em>2-opt</em>.
+    </div>
+  </div>
+</section>
+
+<!-- 5 · RESTRICCIÓN Y PARÁMETROS -->
+<section>
+  <div class="wrap narrow">
+    <div class="label rise"><span>§5 · Modelo</span><span>Parámetros</span></div>
+    <h2 class="rise">La regla del peso por vehículo.</h2>
+    <p class="rise">Cada vehículo tiene un límite. Para cada ruta, la suma de los
+      pesos de los pedidos que carga no puede pasarse de ese límite. Esa es la
+      restricción:</p>
+    <div class="eq rise">
+      $$\sum_{i \in r} \text{Peso}_i \;\le\; C$$
+    </div>
+    <div class="explain rise">
+      <h4>¿Qué significa cada parte?</h4>
+      <ul>
+        <li><strong>$r$</strong>: una ruta (el grupo de pedidos asignados a un vehículo).</li>
+        <li><strong>$i \in r$</strong>: cada pedido $i$ que pertenece a esa ruta.</li>
+        <li><strong>$\text{Peso}_i$</strong>: el peso (en kg) del pedido $i$.</li>
+        <li><strong>$\sum_{i \in r}$</strong>: el símbolo $\sum$ (sigma) significa <em>sumar todo</em>. Aquí sumamos los pesos de todos los pedidos de la ruta.</li>
+        <li><strong>$C$</strong>: la capacidad máxima del vehículo.</li>
+      </ul>
+      Se lee: <em>"la suma de los pesos de los pedidos de la ruta tiene que ser menor o igual a la capacidad del vehículo".</em>
+    </div>
+    <p class="rise"><strong>Decisión tomada.</strong> La guía sugiere $C = 100$ kg.
+      Pero los productos de Olist son livianos (libros, ropa, accesorios) y con
+      esa capacidad los 30 pedidos caben en un solo vehículo: no podríamos mostrar
+      cómo opera la restricción. Bajamos la capacidad a $\mathbf{C = 15}$ kg, que
+      es coherente con una flota de motos o bicicletas eléctricas para reparto
+      urbano de productos pequeños. Adicionalmente, para que el ejercicio sea
+      didáctico, tomamos los pedidos con peso en el rango <em>percentil 50–90</em>
+      (ni los más livianos ni los más pesados).</p>
+  </div>
+</section>
+
+<!-- 6 · HEURÍSTICA -->
+<section>
+  <div class="wrap narrow">
+    <div class="label rise"><span>§6 · Método</span><span>Heurísticas</span></div>
+    <h2 class="rise">Cómo armamos las rutas.</h2>
+
+    <h3 class="rise">Paso 1. Barrido angular.</h3>
+    <p class="rise">Imaginamos al depósito en el centro y dibujamos una línea
+      imaginaria hacia cada pedido. Esa línea tiene un <em>ángulo</em>. Ordenamos los
+      pedidos en sentido horario (como las manecillas del reloj) y los vamos metiendo
+      a un vehículo uno tras otro hasta que el siguiente no cabría; ahí cerramos esa
+      ruta y empezamos otra. Esto se llama <em>heurística de barrido</em> y tiende
+      a poner pedidos vecinos en la misma ruta.</p>
+
+    <h3 class="rise">Paso 2. Vecino más cercano.</h3>
+    <p class="rise">Una vez agrupados los pedidos en un vehículo, ¿en qué orden los
+      visitamos? Regla simple: <em>desde donde estoy, voy al pedido no visitado
+      más cercano</em>. Se repite hasta haber visitado todos. Es rápido y casi
+      siempre da una ruta razonable, aunque no la mejor posible.</p>
+
+    <h3 class="rise">Paso 3. Mejora con 2-opt.</h3>
+    <p class="rise">2-opt es una idea sencilla: tomamos la ruta y <em>volteamos
+      un tramo de ella</em> para ver si queda más corta. Si sí, nos quedamos con la
+      nueva; si no, probamos otro tramo. Cuando ya ningún tramo se puede mejorar,
+      paramos.</p>
+    <div class="explain rise">
+      <h4>¿Por qué se llama 2-opt?</h4>
+      Porque en cada paso <em>cambia 2 conexiones</em> de la ruta: rompe dos
+      "vías" que estaban conectadas y las reconecta de otra forma. Visualmente
+      equivale a <em>deshacer cruces</em>: si la ruta dibuja una X en el mapa,
+      casi siempre se puede mejorar enderezando esa X.
+    </div>
+    <pre class="codeblock"><span class="c"># 2-opt — la idea en pseudocódigo</span>
+mejor_ruta <span class="k">←</span> ruta inicial
+mejor_d    <span class="k">←</span> distancia(ruta inicial)
+repetir:
+    para cada par (i, j) de la ruta:
+        candidato <span class="k">←</span> ruta con el tramo entre i y j invertido
+        <span class="k">si</span> distancia(candidato) &lt; mejor_d:
+            mejor_ruta <span class="k">←</span> candidato
+            mejor_d    <span class="k">←</span> distancia(candidato)
+hasta que ningún cambio mejore la ruta
+retornar mejor_ruta</pre>
+    <p class="rise"><strong>Solución óptima vs. heurística.</strong> La solución
+      <em>óptima</em> es literalmente la mejor posible. Una <em>heurística</em>
+      entrega una buena pero sin garantía. 2-opt encuentra mínimos
+      <em>locales</em>: la ruta es mejor que sus parientes cercanos, pero puede
+      existir otra todavía mejor que el algoritmo no encuentre.</p>
+  </div>
+</section>
+
+<!-- 7 · RESULTADOS + MAPA -->
+<section>
+  <div class="wrap">
+    <div class="label rise"><span>§7 · Resultados</span><span>Salidas</span></div>
+    <h2 class="rise">Resultados.</h2>
+  </div>
+  <div class="wrap narrow">
+    <p class="rise">Aplicar los tres pasos (barrido angular, agrupar por
+      capacidad, vecino más cercano, 2-opt) sobre los 30 pedidos generó cuatro
+      rutas que respetan la capacidad de 15 kg. Las distancias están en kilómetros
+      calculadas con Haversine.</p>
+    <table class="rise">
+      <caption>Tabla 2. Resumen de las rutas generadas. C = 15 kg.</caption>
+      <thead><tr><th>Vehículo</th><th>Pedidos</th><th>Peso (kg)</th><th>NN (km)</th><th>2-opt (km)</th><th>Δ (km)</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>11</td><td>14.48</td><td>64.55</td><td>59.58</td><td>−4.98</td></tr>
+        <tr><td>2</td><td>9</td><td>13.01</td><td>55.14</td><td>55.14</td><td>0.00</td></tr>
+        <tr><td>3</td><td>8</td><td>14.64</td><td>44.47</td><td>42.53</td><td>−1.94</td></tr>
+        <tr><td>4</td><td>2</td><td>3.44</td><td>4.35</td><td>4.35</td><td>0.00</td></tr>
+        <tr><td>Total</td><td>30</td><td>45.57</td><td>168.51</td><td>161.60</td><td>−6.92</td></tr>
+      </tbody>
+    </table>
+    <p class="rise">2-opt mejoró las rutas con más pedidos (vehículos 1 y 3). Las
+      rutas cortas (vehículos 2 y 4) no se pudieron mejorar: en una ruta de dos
+      paradas voltear el tramo da el mismo recorrido (la matriz es simétrica), y
+      en rutas con pocos pedidos vecino más cercano ya estaba en su mínimo local.
+      La reducción total fue de <strong>6,92 km</strong> (un 4,1 % menos), ganada
+      en milisegundos de cálculo.</p>
+  </div>
+
+  <div class="wrap" style="margin-top:32px">
+    <div class="map-wrap">
+      <div id="map"></div>
+      <div class="map-controls">
+        <h4>Capa visible</h4>
+        <div class="row"><span class="sw" style="background:#1a4fff"></span><span>Vehículo 1 · 11 pedidos</span></div>
+        <div class="row"><span class="sw" style="background:#d53e00"></span><span>Vehículo 2 · 9 pedidos</span></div>
+        <div class="row"><span class="sw" style="background:#1f8a3a"></span><span>Vehículo 3 · 8 pedidos</span></div>
+        <div class="row"><span class="sw" style="background:#7c2bb8"></span><span>Vehículo 4 · 2 pedidos</span></div>
+        <div class="row" style="margin-top:6px"><span class="sw" style="background:#101113"></span><span>Depósito</span></div>
+        <div class="toggle"><label><input type="checkbox" id="tgl" checked> Mostrar rutas 2-opt</label></div>
+        <div class="toggle"><label><input type="checkbox" id="tglnn"> Mostrar rutas NN</label></div>
+      </div>
+    </div>
+    <div class="map-caption">Figura 1. Mapa interactivo de las cuatro rutas
+      construidas. Las polilíneas siguen el orden de visita devuelto por 2-opt;
+      las polilíneas discontinuas (capa NN) muestran el orden inicial antes del
+      refinamiento.</div>
+  </div>
+</section>
+
+<!-- 8 · LIMITACIONES -->
+<section>
+  <div class="wrap narrow">
+    <div class="label rise"><span>§8 · Discusión</span><span>Limitaciones</span></div>
+    <h2 class="rise">Lo que el modelo no resuelve.</h2>
+    <ol class="rise">
+      <li>Las distancias son en línea recta sobre la superficie esférica; la
+        distancia real por calles es mayor.</li>
+      <li>No se modelaron horarios de entrega, prioridades del cliente,
+        tiempos de descarga ni la jornada del conductor.</li>
+      <li>Asumimos vehículos iguales. En la realidad las flotas suelen ser
+        mixtas (motos, camionetas, camiones).</li>
+      <li>El depósito es ficticio: lo ubicamos en el centro geométrico de los
+        pedidos. En la realidad sería una bodega con dirección fija.</li>
+      <li>La geolocalización es por prefijo postal, no por dirección exacta
+        del cliente.</li>
+      <li>2-opt encuentra un buen mínimo <em>local</em>: puede existir una ruta
+        mejor que el algoritmo no encuentre.</li>
+      <li>Los datos son de 2016–2018; el comportamiento de consumo cambia con
+        el tiempo.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- REFERENCIAS -->
+<footer>
+  <div class="wrap narrow">
+    <h4>Referencias</h4>
+    <ol>
+      <li>Olist & Sionek, A. (2018). <em>Brazilian E-Commerce Public Dataset by
+        Olist</em>. Kaggle. <a href="https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce">kaggle.com/datasets/olistbr/brazilian-ecommerce</a></li>
+      <li>Sinnott, R. W. (1984). <em>Virtues of the Haversine</em>. Sky and
+        Telescope, 68(2), 158.</li>
+      <li>Dantzig, G. B., & Ramser, J. H. (1959). <em>The Truck Dispatching
+        Problem</em>. Management Science, 6(1), 80–91.</li>
+      <li>Lin, S. (1965). <em>Computer Solutions of the Traveling Salesman
+        Problem</em>. Bell System Technical Journal, 44(10), 2245–2269.</li>
+      <li>Cormen, T. H., Leiserson, C. E., Rivest, R. L., & Stein, C. (2009).
+        <em>Introduction to Algorithms</em> (3rd ed.). MIT Press.</li>
+    </ol>
+
+    <h4 style="margin-top:32px">Artefactos</h4>
+    <ol>
+      <li><code>Optimizacion_Rutasv3.ipynb</code> — notebook ejecutado.</li>
+      <li><code>pedidos_logiexpress_limpio.csv</code> — conjunto final de 30 pedidos.</li>
+      <li><code>matriz_distancias_haversine.csv</code> — matriz 31 × 31.</li>
+      <li><code>informe.tex</code> — informe técnico en LaTeX.</li>
+    </ol>
+
+    <div class="meta">
+      <span>ETITC · Programa de Tecnología en Desarrollo de Software</span>
+      <span>Caso aplicado · LogiExpress</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Barra de progreso
+  const bar = document.getElementById('progress');
+  window.addEventListener('scroll', () => {
+    const h = document.documentElement;
+    bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + '%';
+  });
+
+  // Animaciones suaves
+  const io = new IntersectionObserver(es =>
+    es.forEach(e => e.isIntersecting && e.target.classList.add('in')),
+    { threshold: 0.12 });
+  document.querySelectorAll('.rise').forEach(el => io.observe(el));
+
+  // === DATOS REALES DEL NOTEBOOK ===
+  // Nodo 0 = depósito (mediana de lat/lon de los 30 pedidos)
+  // Nodos 1..30 = pedidos (orden = índice del DataFrame + 1)
+  const DEPOT = [-23.5675534, -46.6444563];
+
+  const PEDIDOS = {
+     1:[-23.537368,-46.659642,1.60],
+     2:[-23.665189,-46.646753,2.55],
+     3:[-23.520018,-46.719062,1.00],
+     4:[-23.523154,-46.445408,0.70],
+     5:[-23.569763,-46.656772,0.70],
+     6:[-23.564658,-46.596266,0.98],
+     7:[-23.594000,-46.751503,1.01],
+     8:[-23.606953,-46.523468,2.08],
+     9:[-23.624000,-46.675273,1.98],
+    10:[-23.701208,-46.634834,1.08],
+    11:[-23.585995,-46.734721,1.15],
+    12:[-23.643745,-46.759758,1.35],
+    13:[-23.585837,-46.570630,1.30],
+    14:[-23.463800,-46.600511,1.25],
+    15:[-23.522749,-46.506790,1.28],
+    16:[-23.622776,-46.611451,1.85],
+    17:[-23.601762,-46.477217,1.10],
+    18:[-23.561265,-46.656554,0.80],
+    19:[-23.543550,-46.551520,1.37],
+    20:[-23.596146,-46.730158,0.76],
+    21:[-23.564112,-46.664530,2.64],
+    22:[-23.512990,-46.550621,1.40],
+    23:[-23.608877,-46.646717,1.40],
+    24:[-23.725048,-46.687847,0.65],
+    25:[-23.446865,-46.614441,0.80],
+    26:[-23.537053,-46.679558,0.84],
+    27:[-23.565974,-46.644844,3.20],
+    28:[-23.501229,-46.644282,3.20],
+    29:[-23.569133,-46.582713,2.80],
+    30:[-23.478724,-46.588240,2.75]
+  };
+
+  // Las cuatro rutas tal como las devolvió el notebook
+  const RUTAS = [
+    { id:1, color:'#1a4fff', nn:[0,5,23,9,2,10,24,12,7,11,20,16,0],
+                              opt:[0,5,20,11,7,12,24,10,2,9,23,16,0],
+                              nodos:[5,11,7,20,12,9,24,23,2,10,16] },
+    { id:2, color:'#d53e00', nn:[0,6,29,13,19,22,15,4,17,8,0],
+                              opt:[0,6,29,13,19,22,15,4,17,8,0],
+                              nodos:[8,13,17,29,6,4,19,15,22] },
+    { id:3, color:'#1f8a3a', nn:[0,27,1,26,3,28,14,30,25,0],
+                              opt:[0,27,1,26,3,28,30,14,25,0],
+                              nodos:[30,14,25,28,27,1,26,3] },
+    { id:4, color:'#7c2bb8', nn:[0,18,21,0],
+                              opt:[0,18,21,0],
+                              nodos:[18,21] }
+  ];
+
+  function coord(nodo){ return nodo === 0 ? DEPOT : PEDIDOS[nodo].slice(0,2); }
+
+  // === MAPA LEAFLET ===
+  const map = L.map('map', { zoomControl:true, scrollWheelZoom:false })
+                .setView(DEPOT, 12);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(map);
+
+  // Capas
+  const layerOpt = L.layerGroup().addTo(map);
+  const layerNN  = L.layerGroup();
+
+  // Depósito
+  L.circleMarker(DEPOT, {
+    radius: 7, color:'#101113', fillColor:'#101113', fillOpacity:1, weight:2
+  }).bindPopup('<b>Depósito</b><br>'+DEPOT[0].toFixed(4)+', '+DEPOT[1].toFixed(4))
+   .addTo(map);
+
+  // Polilíneas 2-opt y NN
+  RUTAS.forEach(r => {
+    const ptsOpt = r.opt.map(coord);
+    L.polyline(ptsOpt, { color:r.color, weight:3, opacity:0.9 })
+      .bindPopup(`Vehículo ${r.id} · 2-opt · ${r.nodos.length} pedidos`)
+      .addTo(layerOpt);
+
+    const ptsNN = r.nn.map(coord);
+    L.polyline(ptsNN, { color:r.color, weight:2, opacity:0.7, dashArray:'4 6' })
+      .bindPopup(`Vehículo ${r.id} · NN · ${r.nodos.length} pedidos`)
+      .addTo(layerNN);
+
+    r.nodos.forEach(n => {
+      const [lat,lng,peso] = PEDIDOS[n];
+      L.circleMarker([lat,lng], {
+        radius:5, color:r.color, fillColor:r.color, fillOpacity:0.95, weight:1.5
+      }).bindPopup(`<b>Pedido ${n}</b><br>Vehículo ${r.id}<br>${peso} kg`)
+        .addTo(layerOpt);
+    });
+  });
+
+  // Toggle layers
+  document.getElementById('tgl').addEventListener('change', e => {
+    if (e.target.checked) layerOpt.addTo(map); else map.removeLayer(layerOpt);
+  });
+  document.getElementById('tglnn').addEventListener('change', e => {
+    if (e.target.checked) layerNN.addTo(map); else map.removeLayer(layerNN);
+  });
+
+  // Ajustar zoom a las polilíneas
+  const all = [];
+  RUTAS.forEach(r => r.opt.forEach(n => all.push(coord(n))));
+  map.fitBounds(L.latLngBounds(all).pad(0.1));
+
+  // Forzar recálculo de dimensiones si el contenedor cambia (algunos navegadores
+  // miden mal el tamaño cuando el script corre antes del layout final).
+  setTimeout(() => map.invalidateSize(), 200);
+  window.addEventListener('load', () => map.invalidateSize());
+  window.addEventListener('resize', () => map.invalidateSize());
+  // Cuando la sección entra en viewport, invalidar también.
+  const mapWrap = document.querySelector('.map-wrap');
+  if (mapWrap) {
+    const mio = new IntersectionObserver(es => {
+      es.forEach(e => { if (e.isIntersecting) map.invalidateSize(); });
+    });
+    mio.observe(mapWrap);
+  }
+
+  // === VISTAS TIPO EXCEL (.head() de cada CSV) ===
+  // pedidos_logiexpress_limpio.csv - primeras 10 filas
+  const PEDIDOS_PREVIEW = [
+    ['4888d985060eb4760da7373673343df2','-23.537368','-46.659642','1.60','sao paulo','SP','1','1'],
+    ['42e9b8d9802096afe88a27ff32fb838a','-23.665189','-46.646753','2.55','sao paulo','SP','1','2'],
+    ['a2a04ead650a00874aec73c0d989298b','-23.520018','-46.719062','1.00','sao paulo','SP','1','3'],
+    ['0c6715b2f888887f2ab9c7d6e099d38b','-23.523154','-46.445408','0.70','sao paulo','SP','1','4'],
+    ['4f6b1944e5dab6270cb4010b00edb3bc','-23.569763','-46.656772','0.70','sao paulo','SP','1','5'],
+    ['da8831dfbb89ea6b128840224899b348','-23.564658','-46.596266','0.98','sao paulo','SP','1','6'],
+    ['4ac657f0949f8f58a10b48c192df0b4e','-23.594000','-46.751503','1.01','sao paulo','SP','1','7'],
+    ['18827f4a6a534ed3eae539fe6f17a1b1','-23.606953','-46.523468','2.08','sao paulo','SP','1','8'],
+    ['6d0d1b394c3e9a042ef3fba7cb0968f5','-23.624000','-46.675273','1.98','sao paulo','SP','1','9'],
+    ['d61c0e8066e7a5a2e6071533b9efdd95','-23.701208','-46.634834','1.08','sao paulo','SP','2','10']
+  ];
+  const tbodyP = document.getElementById('xls-pedidos');
+  if (tbodyP) {
+    PEDIDOS_PREVIEW.forEach((row, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="rownum">${i+2}</td>` +
+        row.map((c, idx) => {
+          const cls = (idx === 0 || idx === 4 || idx === 5) ? 'text' : '';
+          return `<td class="${cls}">${c}</td>`;
+        }).join('');
+      tbodyP.appendChild(tr);
+    });
+  }
+
+  // matriz_distancias_haversine.csv - primeras 6 filas, primeras 6 columnas
+  const MATRIZ_PREVIEW = [
+    ['0','0.000','3.692','10.859','9.253','20.893','1.268'],
+    ['1','3.692','0.000','14.274','6.358','21.898','3.614'],
+    ['2','10.859','14.274','0.000','17.744','25.892','10.660'],
+    ['3','9.253','6.358','17.744','0.000','27.903','8.421'],
+    ['4','20.893','21.898','25.892','27.903','0.000','22.160'],
+    ['5','1.268','3.614','10.660','8.421','22.160','0.000']
+  ];
+  const tbodyM = document.getElementById('xls-matriz');
+  if (tbodyM) {
+    MATRIZ_PREVIEW.forEach((row, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="rownum">${i+2}</td>` +
+        row.map((c, idx) => {
+          // diagonal y nodo index resaltados
+          if (idx === 0) return `<td class="text" style="font-weight:600;background:#f4f1ea">${c}</td>`;
+          if (parseInt(row[0]) === idx - 1) return `<td style="background:#e8e4d9;color:#888">${c}</td>`;
+          return `<td>${c}</td>`;
+        }).join('');
+      tbodyM.appendChild(tr);
+    });
+  }
+</script>
+</body>
+</html>

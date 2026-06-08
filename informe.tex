@@ -1,0 +1,483 @@
+% =====================================================================
+%  Informe - Optimizacion de rutas de ultima milla
+%  Caso LogiExpress * ETITC * Electiva Tecnica II - Ciencia de Datos
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{transparent}
+\usepackage{eso-pic}
+\usepackage{fancyhdr}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{tcolorbox}
+\usepackage{hyperref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue!60!black,
+  citecolor=black,
+  pdfborder={0 0 0},
+  hidelinks
+}
+
+% ---------------------------------------------------------------------
+%  Marca de agua: ETITC.png centrada con opacidad 8%
+% ---------------------------------------------------------------------
+\AddToShipoutPictureBG{%
+  \AtPageCenter{%
+    \makebox[0pt][c]{%
+      \transparent{0.08}%
+      \includegraphics[width=0.6\paperwidth,keepaspectratio]{ETITC.png}%
+    }%
+  }%
+}
+
+% Encabezado y pie
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancyhead[L]{\small Electiva Tecnica II - Ciencia de Datos}
+\fancyhead[R]{\small Caso LogiExpress}
+\fancyfoot[C]{\thepage}
+
+% Estilo de titulos
+\titleformat{\section}{\Large\bfseries}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
+
+% Caja para placeholder de screenshot del notebook
+\newcommand{\screenshot}[2]{%
+  \begin{figure}[h!]
+  \centering
+  \fbox{\begin{minipage}[c][4.6cm][c]{0.88\linewidth}\centering
+    \texttt{[ espacio reservado para captura del notebook ]}\par
+    \vspace{6pt}
+    {\footnotesize Sustituir por una imagen guardada como \texttt{#1.png}}
+  \end{minipage}}
+  \caption{#2}
+  \label{fig:#1}
+  \end{figure}
+}
+
+% Caja de glosario / explicacion sencilla
+\newtcolorbox{explica}[1]{
+  colback=blue!4!white, colframe=blue!30!black,
+  boxrule=0.4pt, arc=2pt,
+  title={\footnotesize\bfseries\sffamily #1},
+  fonttitle=\footnotesize\bfseries
+}
+
+% =====================================================================
+\begin{document}
+
+% --- Portada ---------------------------------------------------------
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+
+{\Large\textsc{Escuela Tecnologica Instituto Tecnico Central}}\\[0.4cm]
+{\large Tecnologia en Desarrollo de Software}\\
+{\large Electiva Tecnica II - Ciencia de Datos}\\[2.5cm]
+
+{\LARGE\bfseries Optimizacion de rutas de ultima milla}\\[0.4cm]
+{\Large\bfseries Caso LogiExpress}\\[0.4cm]
+{\large Aplicacion sobre el dataset Olist (Kaggle)}\\[3cm]
+
+\begin{tabular}{rl}
+\textbf{Integrante 1:} & Nombre completo \\
+                       & Documento - Correo \\[6pt]
+\textbf{Integrante 2:} & Nombre completo \\
+                       & Documento - Correo \\
+\end{tabular}\\[2cm]
+
+\textbf{Docente:} Nombre del docente\\
+\textbf{Semestre:} Septimo\\
+\textbf{Fecha:} \today\\
+\textbf{Repositorio GitHub:} \url{https://github.com/usuario/repo}\\
+
+\vfill
+\end{titlepage}
+
+% --- Resumen ---------------------------------------------------------
+\section*{Resumen}
+Este informe documenta el desarrollo del caso LogiExpress: una empresa
+ficticia que debe entregar 30 pedidos en la ciudad de Sao Paulo desde un
+unico depposito, respetando una capacidad maxima por vehiculo. Se trabajo
+con el dataset publico de Olist (Kaggle), se calcularon las distancias
+entre puntos usando la formula de Haversine, se demostro experimentalmente
+que la solucion exacta no es viable para 30 pedidos y se construyeron las
+rutas con dos heuristicas sencillas: vecino mas cercano y 2-opt. El
+resultado final fueron \textbf{4 rutas factibles} con una distancia total
+de \textbf{161.60 km}, una mejora de 6.92 km frente al ordenamiento inicial.
+
+\tableofcontents
+\newpage
+
+% =====================================================================
+\section{Que problema estamos resolviendo}
+LogiExpress es una empresa ficticia de reparto urbano. Cada manana
+recibe varios pedidos desde un unico centro de distribucion (deposito)
+y debe entregarlos a clientes ubicados en distintas zonas de la
+ciudad. Cada pedido tiene una ubicacion (un punto en el mapa) y un peso.
+Cada vehiculo solo puede cargar hasta cierto peso maximo.
+
+La empresa necesita dos cosas al mismo tiempo:
+\begin{itemize}[leftmargin=*,nosep]
+  \item \textbf{Que los pedidos quepan} en los vehiculos: ninguno debe
+        exceder su capacidad.
+  \item \textbf{Que se recorra la menor distancia posible}, para gastar
+        menos combustible, tiempo y emisiones.
+\end{itemize}
+
+Este escenario es una version simplificada de un problema clasico de
+investigacion de operaciones llamado \emph{Problema de Ruteo de
+Vehiculos con Capacidad}, conocido por sus siglas en ingles como CVRP
+(\emph{Capacitated Vehicle Routing Problem}).
+
+\begin{explica}{En palabras simples}
+Imagina que tu eres el repartidor. Te dan 30 paquetes para entregar,
+todos tienen una direccion y un peso, y tu camioneta solo puede cargar
+hasta 15 kilos por viaje. Tienes que decidir: cuantos viajes hacer, que
+paquetes meter juntos en cada viaje y en que orden visitarlos para
+manejar lo menos posible. Eso es exactamente el CVRP.
+\end{explica}
+
+% =====================================================================
+\section{El dataset: de donde salen los datos}
+\textbf{Nombre:} Brazilian E-Commerce Public Dataset by Olist.\\
+\textbf{Fuente:} Kaggle\\
+\textbf{Enlace:} \url{https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce}
+
+Olist es una marketplace de Brasil (algo parecido a Mercado Libre o
+Amazon). Publicaron en Kaggle un archivo abierto con casi 100\,000
+pedidos reales hechos entre 2016 y 2018. Los datos estan anonimizados:
+no aparecen nombres ni direcciones exactas, solo prefijos postales.
+
+El dataset viene en \textbf{cinco archivos} que hay que combinar para
+poder armar un solo pedido con todo lo que necesitamos:
+\begin{itemize}[leftmargin=*,nosep]
+  \item \texttt{olist\_orders\_dataset.csv} - id del pedido y su estado.
+  \item \texttt{olist\_customers\_dataset.csv} - cliente y prefijo postal.
+  \item \texttt{olist\_order\_items\_dataset.csv} - productos del pedido.
+  \item \texttt{olist\_products\_dataset.csv} - peso de cada producto.
+  \item \texttt{olist\_geolocation\_dataset.csv} - latitud/longitud por prefijo postal.
+\end{itemize}
+
+\screenshot{evidencia-dataset}{Ficha del dataset cargado en el notebook
+con nombre, fuente, enlace y cantidad de registros.}
+
+% =====================================================================
+\section{Preparacion de los datos}
+Los archivos originales no se pueden usar directamente. Hay que hacer
+varios pasos de limpieza:
+
+\begin{enumerate}[leftmargin=*,nosep]
+  \item \textbf{Unir las tablas:} se cruzan \texttt{orders} con
+        \texttt{customers}, luego con \texttt{items}, productos y
+        geolocalizacion. Asi cada fila queda con \emph{id del pedido,
+        coordenadas y peso} en un solo lugar.
+  \item \textbf{Resumir la geolocalizacion:} cada prefijo postal tiene
+        muchas coordenadas distintas en el dataset (porque cubre varias
+        cuadras). Tomamos la \emph{mediana} de latitud y longitud por
+        prefijo para representar el centro de esa zona.
+  \item \textbf{Calcular el peso del pedido:} sumamos el peso (en gramos)
+        de los productos que lo componen y lo pasamos a kilogramos.
+  \item \textbf{Filtrar:} solo pedidos con estado \texttt{delivered}
+        (entregados), ciudad Sao Paulo, peso mayor que cero, coordenadas
+        dentro de Brasil.
+  \item \textbf{Seleccionar 30 pedidos:} se tomo una muestra aleatoria
+        de pedidos con peso entre el percentil 50 y 90 (es decir, ni los
+        mas livianos ni los mas pesados).
+\end{enumerate}
+
+\begin{explica}{Que es un percentil}
+Si ordenas todos los pedidos del mas liviano al mas pesado, el percentil
+50 es el peso del pedido que queda en la mitad. El percentil 90 es el
+que esta despues del 90\% de los pedidos. Tomar el rango 50--90 quiere
+decir: descarto los pedidos demasiado livianos (que no llenarian el
+vehiculo) y los demasiado pesados (que copan un vehiculo con uno o dos
+pedidos).
+\end{explica}
+
+\screenshot{tabla-pedidos}{Tabla final con los 30 pedidos seleccionados
+y sus columnas: id, latitud, longitud, peso, ciudad, estado.}
+
+% =====================================================================
+\section{Como medir distancias entre dos puntos del mapa}
+Para construir rutas necesitamos saber que tan lejos esta cada pedido
+de los demas. Una idea ingenua seria usar la regla de Pitagoras sobre
+las coordenadas (latitud y longitud) como si fueran un plano. Eso esta
+mal: la Tierra es \emph{curva}, no plana, y un grado de longitud no
+mide lo mismo cerca del ecuador que cerca de los polos.
+
+Lo correcto es usar la \textbf{formula de Haversine}, una formula con
+mas de 200 anos de antiguedad que aproxima la distancia sobre la
+superficie de una esfera (como si la Tierra fuera una pelota perfecta):
+
+\begin{equation}
+d \;=\; 2R\,\arcsin\!\left(\sqrt{\,\sin^2\!\left(\tfrac{\varphi_2-\varphi_1}{2}\right)
++ \cos\varphi_1\,\cos\varphi_2\,\sin^2\!\left(\tfrac{\lambda_2-\lambda_1}{2}\right)\,}\right)
+\label{eq:haversine}
+\end{equation}
+
+\begin{explica}{Que significa cada simbolo}
+\begin{itemize}[leftmargin=*,nosep]
+  \item $d$: la distancia entre los dos puntos, en kilometros. Es lo
+        que queremos calcular.
+  \item $R$: el radio de la Tierra. Usamos $R \approx 6\,371$ km.
+  \item $\varphi_1$ y $\varphi_2$: la \emph{latitud} de cada punto
+        (que tan al norte o al sur estan), expresada en radianes.
+  \item $\lambda_1$ y $\lambda_2$: la \emph{longitud} de cada punto
+        (que tan al este o al oeste estan), en radianes.
+  \item $\sin$, $\cos$, $\arcsin$: funciones de trigonometria de
+        secundaria.
+\end{itemize}
+La formula resuelve un triangulo sobre la esfera y devuelve la
+distancia mas corta que se podria recorrer sobre la superficie.
+\end{explica}
+
+Con esta formula calculamos la distancia entre cada par de puntos: 30
+pedidos mas el deposito dan 31 puntos, asi que la \emph{matriz de
+distancias} es una tabla de $31 \times 31$ casillas. Se calcula una sola
+vez al principio y los algoritmos posteriores solo la consultan.
+
+\textbf{Limitacion.} Haversine da la distancia en \emph{linea recta}
+sobre la curvatura terrestre. No tiene en cuenta calles, sentidos
+viales, semaforos ni trafico. En la realidad la distancia recorrida
+sera mayor.
+
+\screenshot{matriz-distancias}{Primeras filas de la matriz de distancias
+Haversine de tamano 31$\times$31 generada por el notebook.}
+
+% =====================================================================
+\section{Por que no podemos probar todas las rutas posibles}
+La forma ``perfecta'' de resolver el problema seria \emph{probar todas
+las rutas posibles} y quedarse con la mas corta. Pero la cantidad de
+combinaciones crece monstruosamente rapido con el numero de pedidos.
+
+Si tenemos $n$ pedidos, la cantidad de ordenes distintos en que podemos
+visitarlos es $n!$ (se lee ``n factorial'').
+
+\begin{explica}{Que es n factorial}
+$n!$ significa multiplicar $1 \times 2 \times 3 \times \dots \times n$.
+Por ejemplo:
+\begin{itemize}[leftmargin=*,nosep]
+  \item $3! = 1 \times 2 \times 3 = 6$
+  \item $5! = 1 \times 2 \times 3 \times 4 \times 5 = 120$
+  \item $8! = 40\,320$
+  \item $30! \approx 2{,}65 \times 10^{32}$ (un 265 seguido de 30 ceros)
+\end{itemize}
+Aun si un computador pudiera revisar mil millones de rutas por segundo,
+para 30 pedidos terminaria \emph{mucho despues} de que el sol se
+apague. Por eso esta tecnica solo sirve para problemas muy pequenos.
+\end{explica}
+
+En el notebook se hizo el experimento con $n$ entre 3 y 8 pedidos:
+
+\begin{table}[h!]
+\centering
+\caption{Tiempo medido al probar todas las rutas posibles (fuerza bruta).}
+\begin{tabular}{cccc}
+\toprule
+\textbf{n} & \textbf{Rutas a probar} & \textbf{Tiempo (s)} & \textbf{Distancia (km)} \\
+\midrule
+3 & 6      & 0,0003 & 58,13 \\
+4 & 24     & 0,0012 & 65,01 \\
+5 & 120    & 0,0063 & 65,80 \\
+6 & 720    & 0,0502 & 68,00 \\
+7 & 5\,040  & 0,3036 & 68,07 \\
+8 & 40\,320 & 2,7162 & 68,08 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\screenshot{grafica-complejidad}{Grafica del tiempo de ejecucion contra
+el numero de pedidos. La curva crece muy rapido.}
+
+Conclusion: para 30 pedidos no podemos buscar la ruta perfecta. Hay que
+conformarse con una ruta \emph{suficientemente buena} usando
+\textbf{heuristicas}.
+
+\begin{explica}{Que es una heuristica}
+Es una \emph{receta} para conseguir una solucion buena rapido, sin
+garantizar que sea la mejor. Es como cuando organizas tu maleta: no
+calculas la mejor configuracion posible de todos tus cuadernos, solo
+los acomodas razonablemente y listo. En este informe usamos dos
+heuristicas: \emph{vecino mas cercano} (NN) y \emph{2-opt}.
+\end{explica}
+
+% =====================================================================
+\section{La regla del peso por vehiculo}
+Cada vehiculo solo puede cargar hasta $C$ kilogramos. Para cada ruta $r$
+formada por los pedidos que ese vehiculo visita, la suma de los pesos
+no puede pasarse del limite:
+
+\begin{equation}
+\sum_{i \in r} \text{Peso}_i \;\le\; C
+\label{eq:capacidad}
+\end{equation}
+
+\begin{explica}{Que significa cada simbolo}
+\begin{itemize}[leftmargin=*,nosep]
+  \item $r$: una ruta, es decir, el grupo de pedidos que asignamos a
+        un vehiculo.
+  \item $i \in r$: cada pedido $i$ que pertenece a esa ruta.
+  \item $\text{Peso}_i$: el peso (en kilogramos) del pedido $i$.
+  \item $\sum_{i \in r}$: el simbolo $\sum$ (sigma) significa
+        \emph{sumar todo}. Aqui sumamos los pesos de todos los pedidos
+        de la ruta.
+  \item $C$: la capacidad maxima del vehiculo, en kilogramos.
+\end{itemize}
+La formula entonces se lee: ``la suma de los pesos de los pedidos de la
+ruta tiene que ser menor o igual a la capacidad del vehiculo''.
+\end{explica}
+
+\paragraph{Decision tomada.} La guia sugiere $C = 100$ kg. Pero los
+productos de Olist son pequenos (libros, ropa, accesorios) y con esa
+capacidad los 30 pedidos cabian en un solo vehiculo, por lo que no
+podiamos mostrar como funciona la restriccion. Cambiamos a
+$\mathbf{C = 15}$ kg, que es coherente con una flota de motos o
+bicicletas electricas para reparto urbano de productos pequenos.
+
+% =====================================================================
+\section{Como armamos las rutas}
+
+\subsection{Paso 1. Barrido angular}
+Imaginamos al deposito en el centro y dibujamos una linea imaginaria
+hacia cada pedido. Esa linea tiene un \emph{angulo}. Ordenamos los
+pedidos en sentido horario (como las manecillas del reloj) y vamos
+agrupandolos uno tras otro hasta que el siguiente no cabria en el
+vehiculo; ahi cerramos esa ruta y empezamos otra.
+
+Esto se llama \emph{sweep heuristic} (heuristica de barrido) y tiende a
+poner pedidos vecinos en el mismo vehiculo.
+
+\subsection{Paso 2. Vecino mas cercano (NN)}
+Dentro de cada ruta hay que decidir en que orden visitar los pedidos.
+La regla es muy simple: \emph{desde donde estoy, voy al pedido no
+visitado mas cercano}. Se repite hasta haber visitado todos. Es rapido
+y casi siempre da una ruta razonable, aunque no la mejor.
+
+\subsection{Paso 3. Mejora local con 2-opt}
+2-opt es una idea sencilla: tomamos la ruta y \emph{volteamos un tramo
+de ella} para ver si queda mas corta. Si si, nos quedamos con la nueva;
+si no, probamos otro tramo. Cuando ya ningun tramo se puede mejorar,
+paramos.
+
+\begin{explica}{Por que se llama 2-opt}
+Porque en cada paso \emph{cambia 2 conexiones} de la ruta: rompe dos
+``vias'' que estaban conectadas y las reconecta de otra forma.
+Visualmente equivale a \emph{deshacer cruces}: si la ruta dibuja una
+X, casi siempre se puede mejorar enderezando esa X.
+\end{explica}
+
+\paragraph{Solucion optima vs.\ heuristica.} La solucion \emph{optima}
+es literalmente la mejor posible. Una \emph{heuristica} entrega una
+buena pero sin garantia. 2-opt encuentra \emph{minimos locales}: la
+ruta es mejor que sus parientes cercanos, pero puede existir una
+todavia mejor lejos que el algoritmo no encuentre.
+
+\screenshot{mapa-inicial}{Mapa de los 30 pedidos seleccionados, con el
+deposito marcado en rojo.}
+
+% =====================================================================
+\section{Resultados}
+
+\begin{table}[h!]
+\centering
+\caption{Resumen de las rutas generadas (capacidad = 15 kg).}
+\label{tab:resumen}
+\begin{tabular}{cccccc}
+\toprule
+\textbf{Vehiculo} & \textbf{Pedidos} & \textbf{Peso (kg)} &
+\textbf{NN (km)} & \textbf{2-opt (km)} & \textbf{Mejora (km)} \\
+\midrule
+1 & 11 & 14,48 & 64,55 & 59,58 & 4,98 \\
+2 &  9 & 13,01 & 55,14 & 55,14 & 0,00 \\
+3 &  8 & 14,64 & 44,47 & 42,53 & 1,94 \\
+4 &  2 &  3,44 &  4,35 &  4,35 & 0,00 \\
+\midrule
+\textbf{Total} & \textbf{30} & \textbf{45,57} &
+\textbf{168,51} & \textbf{161,60} & \textbf{6,92} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\screenshot{grafica-distancias}{Distancia por vehiculo despues de
+aplicar 2-opt.}
+
+\screenshot{mapa-rutas}{Mapa final con las cuatro rutas, una de cada
+color, y el deposito en rojo.}
+
+\paragraph{Lectura de los resultados.}
+\begin{itemize}[leftmargin=*,nosep]
+  \item Se generaron 4 vehiculos. Tres de ellos cargan cerca del limite
+        (14 kg de los 15 kg posibles); un cuarto vehiculo lleva los 2
+        pedidos sobrantes.
+  \item 2-opt logro mejorar las dos rutas con mas pedidos
+        (vehiculos 1 y 3). Las rutas cortas (vehiculos 2 y 4) ya
+        estaban en su minimo local y no admitieron mejora.
+  \item La mejora total fue de 6,92 km, equivalente a un \textbf{4,1\%}
+        menos respecto al ordenamiento inicial. Es una mejora
+        modesta pero ganada en milisegundos de calculo.
+\end{itemize}
+
+% =====================================================================
+\section{Limitaciones}
+\begin{itemize}[leftmargin=*,nosep]
+  \item Haversine entrega distancia en linea recta sobre la esfera. La
+        distancia real por calles es mayor (semaforos, sentidos,
+        rodeos).
+  \item No se modelaron horarios de entrega, prioridades, tiempos de
+        descarga ni jornada del conductor.
+  \item Asumimos que todos los vehiculos son iguales. En la realidad
+        suele haber flota mixta.
+  \item El deposito es ficticio: se ubico en el centro geometrico de
+        los pedidos.
+  \item La geolocalizacion es por prefijo postal, no por direccion
+        exacta del cliente.
+  \item 2-opt encuentra un buen local, no garantiza el mejor global.
+  \item Los datos son de 2016--2018; el comportamiento real evoluciona.
+\end{itemize}
+
+% =====================================================================
+\section{Conclusiones}
+\begin{itemize}[leftmargin=*,nosep]
+  \item Logramos llevar un dataset publico real de principio a fin: lo
+        descargamos, limpiamos, integramos, calculamos distancias y
+        armamos rutas factibles.
+  \item Confirmamos con un experimento que probar todas las rutas
+        posibles para 30 pedidos es imposible en la practica. Por eso
+        las heuristicas son necesarias en logistica real.
+  \item La combinacion \emph{barrido angular + agrupar por capacidad +
+        vecino mas cercano + 2-opt} entrega rutas razonables en
+        segundos y respeta la restriccion de carga.
+  \item Decisiones como bajar la capacidad a 15 kg y filtrar el rango
+        50--90 del peso fueron necesarias para que el ejercicio
+        muestre la dinamica del problema real.
+  \item Para acercarlo a una operacion real habria que sumar:
+        ventanas horarias, distancias por calles, flota mixta y
+        prioridades de cliente.
+\end{itemize}
+
+% =====================================================================
+\appendix
+\section*{Anexo. Archivos producidos}
+\begin{itemize}[leftmargin=*,nosep]
+  \item \texttt{Optimizacion\_Rutasv3.ipynb} - notebook ejecutado.
+  \item \texttt{pedidos\_logiexpress\_limpio.csv} - los 30 pedidos.
+  \item \texttt{matriz\_distancias\_haversine.csv} - matriz 31$\times$31.
+  \item \texttt{scrollytelling.html} - version web del informe.
+\end{itemize}
+
+\end{document}
