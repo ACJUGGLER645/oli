@@ -189,6 +189,39 @@
   .figrow .cell{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#666}
   .figrow .cell b{display:block;font-family:var(--serif);font-size:34px;font-weight:600;letter-spacing:-0.01em;color:var(--ink);margin-bottom:4px;text-transform:none}
 
+  /* Botones de descarga / preview de artefactos */
+  .artifact-row{
+    display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 24px 0;
+    font-family:var(--mono);font-size:11px;
+  }
+  .pill{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:7px 12px;border:1px solid var(--ink);background:var(--paper);
+    color:var(--ink);text-decoration:none;
+    letter-spacing:.05em;transition:background .15s ease;
+  }
+  .pill:hover{background:var(--ink);color:var(--paper)}
+  .pill .ic{font-size:13px;line-height:1}
+  .pill.primary{background:var(--ink);color:var(--paper)}
+  .pill.primary:hover{background:var(--accent);border-color:var(--accent)}
+  .artifact-row .label{
+    font-size:10px;color:#666;letter-spacing:.15em;text-transform:uppercase;
+    padding:7px 6px 7px 0;
+  }
+
+  /* Tabla de artefactos en la sección final */
+  .arts{margin:24px 0;border:1px solid var(--ink);background:var(--paper)}
+  .arts table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono);margin:0}
+  .arts table th,.arts table td{padding:11px 14px;border-bottom:1px solid #ccc;text-align:left}
+  .arts table th{background:var(--paper-dim);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#444}
+  .arts table tr:last-child td{border-bottom:none}
+  .arts table td.actions{text-align:right;white-space:nowrap}
+  .arts table td.actions .pill{font-size:10px;padding:5px 9px;margin-left:4px}
+  .arts table td .ext{
+    display:inline-block;font-size:9px;letter-spacing:.1em;padding:2px 6px;
+    background:var(--ink);color:var(--paper);margin-right:8px;font-weight:600;
+  }
+
   /* FOOTNOTES / refs */
   footer{padding:60px 0 60px;border-top:1px solid var(--ink);font-size:12px;color:#555}
   footer h4{font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink);margin-bottom:14px}
@@ -226,7 +259,11 @@
       <span>São Paulo, Brasil</span>
     </div>
     <h1 class="rise">Optimización de rutas de última milla con restricción de capacidad sobre el dataset Olist.</h1>
-    <div class="authors rise">Programa de Tecnología en Desarrollo de Software · ETITC</div>
+    <div class="authors rise">
+      <strong>Autores:</strong> Jhon Alejandro Correal Martínez · Rafael Andrés Guzmán Rodríguez<br>
+      <strong>Docente:</strong> Elías Buitrago<br>
+      Programa de Tecnología en Desarrollo de Software · ETITC
+    </div>
     <div class="abstract rise">
       <strong>Resumen.</strong> Una empresa ficticia (LogiExpress) debe entregar 30
       pedidos en São Paulo desde un único depósito, sin pasarse del peso máximo que
@@ -355,6 +392,15 @@
       Cada fila es un pedido con su id, ubicación, peso y nodo asignado.
       El archivo completo tiene 30 filas y se exporta automáticamente desde el notebook.
     </p>
+    <div class="artifact-row rise">
+      <span class="label">Archivo</span>
+      <a class="pill primary" href="pedidos_logiexpress_limpio.csv" download>
+        <span class="ic">↓</span><span>Descargar CSV</span>
+      </a>
+      <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/pedidos_logiexpress_limpio.csv" target="_blank" rel="noopener">
+        <span class="ic">↗</span><span>Ver en GitHub</span>
+      </a>
+    </div>
 
     <!-- Vista tipo Excel: matriz_distancias_haversine.csv -->
     <div class="xls rise" style="margin-top:32px">
@@ -398,6 +444,15 @@
       $j$. La matriz es simétrica y la diagonal es cero (la distancia de un nodo a
       sí mismo es 0). El nodo 0 es el depósito.
     </p>
+    <div class="artifact-row rise">
+      <span class="label">Archivo</span>
+      <a class="pill primary" href="matriz_distancias_haversine.csv" download>
+        <span class="ic">↓</span><span>Descargar CSV</span>
+      </a>
+      <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/matriz_distancias_haversine.csv" target="_blank" rel="noopener">
+        <span class="ic">↗</span><span>Ver en GitHub</span>
+      </a>
+    </div>
 
     <div class="figrow rise">
       <div class="cell"><b>5</b>tablas integradas</div>
@@ -635,6 +690,18 @@ retornar mejor_ruta</pre>
       construidas. Las polilíneas siguen el orden de visita devuelto por 2-opt;
       las polilíneas discontinuas (capa NN) muestran el orden inicial antes del
       refinamiento.</div>
+    <div class="artifact-row rise" style="margin-top:14px">
+      <span class="label">Notebook que genera estos resultados</span>
+      <a class="pill primary" href="Optimizacion_Rutasv3.ipynb" download>
+        <span class="ic">↓</span><span>Descargar .ipynb</span>
+      </a>
+      <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/Optimizacion_Rutasv3.ipynb" target="_blank" rel="noopener">
+        <span class="ic">↗</span><span>Ver en GitHub</span>
+      </a>
+      <a class="pill" href="https://nbviewer.org/github/ACJUGGLER645/oli/blob/main/Optimizacion_Rutasv3.ipynb" target="_blank" rel="noopener">
+        <span class="ic">⊞</span><span>Abrir en nbviewer</span>
+      </a>
+    </div>
   </div>
 </section>
 
@@ -679,13 +746,76 @@ retornar mejor_ruta</pre>
         <em>Introduction to Algorithms</em> (3rd ed.). MIT Press.</li>
     </ol>
 
-    <h4 style="margin-top:32px">Artefactos</h4>
-    <ol>
-      <li><code>Optimizacion_Rutasv3.ipynb</code> — notebook ejecutado.</li>
-      <li><code>pedidos_logiexpress_limpio.csv</code> — conjunto final de 30 pedidos.</li>
-      <li><code>matriz_distancias_haversine.csv</code> — matriz 31 × 31.</li>
-      <li><code>informe.tex</code> — informe técnico en LaTeX.</li>
-    </ol>
+    <h4 style="margin-top:32px">Artefactos del proyecto</h4>
+    <p style="margin-bottom:14px">Todo lo entregable está versionado en
+      <a href="https://github.com/ACJUGGLER645/oli" target="_blank" rel="noopener">github.com/ACJUGGLER645/oli</a>.
+      Para cada archivo puedes descargarlo directamente o previsualizarlo en GitHub.</p>
+    <div class="arts">
+      <table>
+        <thead>
+          <tr><th>Archivo</th><th>Descripción</th><th class="actions" style="text-align:right">Acciones</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="ext">IPYNB</span><code>Optimizacion_Rutasv3.ipynb</code></td>
+            <td>Notebook Jupyter ejecutado de principio a fin.</td>
+            <td class="actions">
+              <a class="pill primary" href="Optimizacion_Rutasv3.ipynb" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/Optimizacion_Rutasv3.ipynb" target="_blank" rel="noopener">↗ Ver</a>
+              <a class="pill" href="https://nbviewer.org/github/ACJUGGLER645/oli/blob/main/Optimizacion_Rutasv3.ipynb" target="_blank" rel="noopener">⊞ nbviewer</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">CSV</span><code>pedidos_logiexpress_limpio.csv</code></td>
+            <td>Conjunto final de 30 pedidos (id, lat, lon, peso, ciudad, estado).</td>
+            <td class="actions">
+              <a class="pill primary" href="pedidos_logiexpress_limpio.csv" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/pedidos_logiexpress_limpio.csv" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">CSV</span><code>matriz_distancias_haversine.csv</code></td>
+            <td>Matriz 31 × 31 con todas las distancias entre nodos.</td>
+            <td class="actions">
+              <a class="pill primary" href="matriz_distancias_haversine.csv" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/matriz_distancias_haversine.csv" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">PDF</span><code>informe.pdf</code></td>
+            <td>Informe técnico final, 9 páginas con marca de agua ETITC.</td>
+            <td class="actions">
+              <a class="pill primary" href="informe.pdf" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/informe.pdf" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">TEX</span><code>informe.tex</code></td>
+            <td>Fuente LaTeX del informe (recompilable con pdflatex).</td>
+            <td class="actions">
+              <a class="pill primary" href="informe.tex" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/informe.tex" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">HTML</span><code>scrollytelling.html</code></td>
+            <td>Esta misma página (versión web del informe).</td>
+            <td class="actions">
+              <a class="pill primary" href="scrollytelling.html" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/scrollytelling.html" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">PDF</span><code>Guia_Tarea_Optimizacion_Rutas.pdf</code></td>
+            <td>Guía original de la actividad evaluativa.</td>
+            <td class="actions">
+              <a class="pill primary" href="Guia_Tarea_Optimizacion_Rutas.pdf" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/Guia_Tarea_Optimizacion_Rutas.pdf" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div class="meta">
       <span>ETITC · Programa de Tecnología en Desarrollo de Software</span>
