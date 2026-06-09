@@ -226,39 +226,6 @@
   .compare-grid .mini-map{width:100%;height:360px;background:#eee}
   @media (max-width:780px){.compare-grid{grid-template-columns:1fr}}
 
-  /* Visor PDF embebido */
-  .pdfview{margin:24px 0;border:1px solid var(--ink);background:var(--paper)}
-  .pdfview .tabs{
-    background:var(--paper-dim);border-bottom:1px solid var(--ink);
-    display:flex;font-family:var(--mono);font-size:11px;
-  }
-  .pdfview .tabs button{
-    background:none;border:none;cursor:pointer;
-    padding:12px 18px;font-family:inherit;font-size:11px;
-    text-transform:uppercase;letter-spacing:.12em;color:#555;
-    border-right:1px solid #ccc;transition:background .15s;
-  }
-  .pdfview .tabs button:hover{background:#fff}
-  .pdfview .tabs button.active{background:var(--paper);color:var(--ink);font-weight:600;position:relative}
-  .pdfview .tabs button.active::after{
-    content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--ink);
-  }
-  .pdfview .tabs .spacer{flex:1;border-right:none}
-  .pdfview .tabs .openext{
-    border-right:none;border-left:1px solid #ccc;color:var(--accent);font-weight:600;
-  }
-  .pdfview .frame{width:100%;height:720px;border:none;background:#525659;display:block}
-  .pdfview .fallback{
-    padding:32px;text-align:center;font-size:13px;color:#555;
-    background:repeating-linear-gradient(45deg,#f4f1ea,#f4f1ea 10px,#eee 10px,#eee 20px);
-  }
-  .pdfview .fallback a{font-weight:600}
-  .pdfview .meta{
-    border-top:1px solid #ccc;padding:8px 14px;background:var(--paper-dim);
-    font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.1em;
-    display:flex;justify-content:space-between;
-  }
-
   /* Botones de descarga / preview de artefactos */
   .artifact-row{
     display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 24px 0;
@@ -335,17 +302,18 @@
       Programa de Tecnología en Desarrollo de Software · ETITC
     </div>
     <div class="abstract rise">
-      <strong>Resumen.</strong> Una empresa ficticia (LogiExpress) debe entregar 30
-      pedidos en São Paulo desde un único depósito, sin pasarse del peso máximo que
-      carga cada vehículo. Usamos el dataset público de Olist (Kaggle) para conseguir
-      coordenadas y pesos reales. Las distancias entre puntos se calcularon con la
-      <em>fórmula de Haversine</em> (apropiada para coordenadas geográficas).
-      Demostramos con un experimento que <em>probar todas las rutas posibles</em>
-      tarda demasiado y es inviable para 30 pedidos. Por eso aplicamos dos recetas
-      sencillas: <em>vecino más cercano</em> (en cada paso vamos al pedido no
-      visitado más cercano) y <em>2-opt</em> (revertimos tramos para acortar la
-      ruta). El resultado: <strong>4 rutas factibles</strong>, distancia total de
-      <strong>161,60 km</strong>, una mejora del 4,1 % frente al ordenamiento inicial.
+      <strong>Resumen.</strong> Se aborda el caso LogiExpress: una operación
+      logística ficticia que debe atender 30 pedidos en São Paulo desde un único
+      depósito, respetando una capacidad máxima por vehículo. Las coordenadas y
+      pesos se obtienen del dataset público de Olist (Kaggle). Las distancias
+      entre puntos se calculan con la <em>fórmula de Haversine</em>, apropiada
+      para coordenadas geográficas. Se documenta experimentalmente que la
+      búsqueda exhaustiva (probar todos los órdenes de visita posibles) es
+      computacionalmente inviable para $n=30$, por lo que se aplican dos
+      heurísticas: <em>vecino más cercano</em> (NN) y <em>2-opt</em>.
+      El resultado obtenido son <strong>4 rutas factibles</strong>, con una
+      distancia total de <strong>161,60 km</strong> y una reducción del 4,1 %
+      respecto al ordenamiento inicial entregado por NN.
     </div>
     <div class="keywords rise">
       <span>Palabras clave:</span>
@@ -359,20 +327,23 @@
 <section>
   <div class="wrap narrow">
     <div class="label rise"><span>§1 · Planteamiento</span><span>Problema</span></div>
-    <h2 class="rise">¿Qué estamos resolviendo?</h2>
-    <p class="rise">Imagina que eres el repartidor. Te dan 30 paquetes para entregar
-      en distintos puntos de la ciudad. Sales y vuelves siempre al mismo lugar (el
-      depósito). Tu vehículo solo puede cargar hasta cierto peso, así que probablemente
-      tendrás que hacer varios viajes. La pregunta es: <em>¿cómo agrupas y ordenas las
-      entregas para manejar lo menos posible?</em></p>
-    <p class="rise">Este escenario tiene un nombre técnico: <strong>Problema de Ruteo
-      de Vehículos con Capacidad</strong> (en inglés <em>Capacitated Vehicle Routing
-      Problem</em>, CVRP). En forma resumida buscamos:</p>
+    <h2 class="rise">Planteamiento del problema</h2>
+    <p class="rise">Se dispone de un conjunto de pedidos que deben ser atendidos
+      desde un único depósito, al que cada vehículo regresa una vez completada su
+      ruta. Cada pedido tiene una ubicación geográfica y un peso conocidos. Cada
+      vehículo tiene una capacidad máxima de carga. El objetivo es asignar los
+      pedidos a vehículos y definir el orden de visita dentro de cada ruta de modo
+      que se minimice la distancia total recorrida sin exceder la capacidad por
+      vehículo.</p>
+    <p class="rise">Este escenario corresponde al <strong>Problema de Ruteo de
+      Vehículos con Capacidad</strong> (en inglés <em>Capacitated Vehicle Routing
+      Problem</em>, CVRP), una generalización del clásico Problema del Vendedor
+      Viajero (TSP). Formalmente se expresa como:</p>
     <div class="eq rise">
       $$\min \; \sum_{r \in R} \sum_{(i,j) \in r} c_{ij} \quad \text{con la condición} \quad \sum_{i \in r} d_i \le C, \;\; \forall\, r \in R$$
     </div>
     <div class="explain rise">
-      <h4>¿Qué significa cada parte?</h4>
+      <h4>Desglose de componentes</h4>
       <ul>
         <li><strong>min</strong>: queremos <em>minimizar</em> (hacer lo más pequeño posible) lo que viene después.</li>
         <li><strong>$R$</strong>: el conjunto de todas las rutas (una por vehículo).</li>
@@ -464,10 +435,10 @@
     </p>
     <div class="artifact-row rise">
       <span class="label">Archivo</span>
-      <a class="pill primary" href="pedidos_logiexpress_limpio.csv" download>
+      <a class="pill primary" href="data/pedidos_logiexpress_limpio.csv" download>
         <span class="ic">↓</span><span>Descargar CSV</span>
       </a>
-      <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/pedidos_logiexpress_limpio.csv" target="_blank" rel="noopener">
+      <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/data/pedidos_logiexpress_limpio.csv" target="_blank" rel="noopener">
         <span class="ic">↗</span><span>Ver en GitHub</span>
       </a>
     </div>
@@ -516,10 +487,10 @@
     </p>
     <div class="artifact-row rise">
       <span class="label">Archivo</span>
-      <a class="pill primary" href="matriz_distancias_haversine.csv" download>
+      <a class="pill primary" href="data/matriz_distancias_haversine.csv" download>
         <span class="ic">↓</span><span>Descargar CSV</span>
       </a>
-      <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/matriz_distancias_haversine.csv" target="_blank" rel="noopener">
+      <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/data/matriz_distancias_haversine.csv" target="_blank" rel="noopener">
         <span class="ic">↗</span><span>Ver en GitHub</span>
       </a>
     </div>
@@ -537,20 +508,21 @@
 <section>
   <div class="wrap narrow">
     <div class="label rise"><span>§3 · Distancia</span><span>Geodésica</span></div>
-    <h2 class="rise">¿Cómo se mide la distancia entre dos puntos del mapa?</h2>
-    <p class="rise">La idea ingenua sería tomar la latitud y la longitud y aplicar
-      la regla de Pitágoras, como si el mapa fuera un plano. Eso está mal: la Tierra
-      es <em>curva</em>, no plana. Un grado de longitud cerca del ecuador mide más
-      kilómetros que un grado cerca de los polos, así que esa aproximación
-      acumula error.</p>
-    <p class="rise">La <strong>fórmula de Haversine</strong> <sup>[2]</sup>, con
-      más de 200 años de antigüedad, calcula la distancia <em>sobre la superficie
-      de una esfera</em> (imaginando la Tierra como una pelota perfecta):</p>
+    <h2 class="rise">Medición de distancia entre puntos geográficos</h2>
+    <p class="rise">Una aproximación inicial consistiría en aplicar el teorema de
+      Pitágoras directamente sobre los valores de latitud y longitud, tratándolos
+      como coordenadas cartesianas en un plano. Este procedimiento es incorrecto
+      porque la superficie terrestre no es plana: la longitud de un grado de
+      longitud depende de la latitud (es máxima en el ecuador y nula en los
+      polos), por lo que la aproximación plana acumula error sistemático.</p>
+    <p class="rise">La <strong>fórmula de Haversine</strong> <sup>[2]</sup>
+      calcula la distancia <em>geodésica</em> entre dos puntos sobre la superficie
+      de una esfera (modelo esférico de la Tierra):</p>
     <div class="eq rise">
       $$d = 2R \, \arcsin \sqrt{ \sin^2\!\left(\tfrac{\varphi_2 - \varphi_1}{2}\right) + \cos\varphi_1 \cos\varphi_2 \sin^2\!\left(\tfrac{\lambda_2 - \lambda_1}{2}\right) }$$
     </div>
     <div class="explain rise">
-      <h4>¿Qué significa cada símbolo?</h4>
+      <h4>Desglose de componentes</h4>
       <ul>
         <li><strong>$d$</strong>: la distancia entre los dos puntos, en kilómetros. Es lo que queremos averiguar.</li>
         <li><strong>$R$</strong>: el radio de la Tierra. Usamos $R \approx 6\,371$ km.</li>
@@ -561,15 +533,17 @@
       </ul>
       Lo que hace la fórmula es resolver un triángulo dibujado sobre la superficie de la esfera y devolvernos la distancia <em>más corta</em> que se podría recorrer caminando por encima.
     </div>
-    <p class="rise">Como tenemos 30 pedidos + 1 depósito = 31 puntos, calculamos
-      todas las distancias entre cada par y las guardamos en una <em>matriz</em>
-      (una tabla cuadrada) de $31 \times 31$ casillas. Los algoritmos que vienen
-      después solo consultan esa tabla, sin recalcular nada.</p>
+    <p class="rise">Con 30 pedidos más 1 depósito se obtienen 31 nodos. Se
+      precalculan todas las distancias entre pares y se almacenan en una
+      <em>matriz de distancias</em> de tamaño $31 \times 31$. Los algoritmos
+      posteriores consultan esta matriz como única fuente de distancia, evitando
+      recalcular Haversine en cada iteración.</p>
     <p class="rise"><strong>Limitación.</strong> Haversine entrega la distancia
-      <em>en línea recta</em> sobre la superficie esférica. No tiene en cuenta
-      calles, semáforos, sentidos viales ni tráfico. La distancia real recorrida
-      será mayor. Para un caso real se usaría un servicio de rutas como
-      Google Maps o OSRM.</p>
+      geodésica sobre la superficie esférica. No considera la red vial,
+      semáforos, sentidos de circulación ni condiciones de tráfico. La distancia
+      efectiva recorrida por un vehículo será mayor. Para un escenario
+      operacional se sustituiría por un servicio de enrutamiento real (por
+      ejemplo, OSRM o Google Maps).</p>
   </div>
 </section>
 
@@ -577,28 +551,30 @@
 <section>
   <div class="wrap narrow">
     <div class="label rise"><span>§4 · Análisis</span><span>Complejidad</span></div>
-    <h2 class="rise">¿Por qué no probamos <em>todas</em> las rutas?</h2>
-    <p class="rise">La forma "perfecta" de resolver el problema sería probar todos
-      los órdenes posibles de visitar a los clientes y quedarse con el que sume
-      menos kilómetros. El problema es que la cantidad de combinaciones crece
-      monstruosamente rápido con el número de pedidos.</p>
-    <p class="rise">Si tenemos $n$ pedidos, hay $n!$ órdenes posibles (se lee
-      "$n$ factorial").</p>
+    <h2 class="rise">Inviabilidad de la búsqueda exhaustiva</h2>
+    <p class="rise">La solución exacta consiste en evaluar todos los órdenes
+      posibles de visita y seleccionar el que minimiza la distancia total. Esta
+      estrategia es conocida como <em>fuerza bruta</em> y garantiza el óptimo
+      global. Su limitación es la complejidad combinatoria: el número de
+      permutaciones crece factorialmente con el número de nodos.</p>
+    <p class="rise">Para $n$ pedidos existen $n!$ órdenes posibles
+      (notación: <em>$n$ factorial</em>).</p>
     <div class="explain rise">
-      <h4>¿Qué es $n$ factorial?</h4>
-      Multiplicar todos los números desde 1 hasta $n$. Por ejemplo:
+      <h4>Definición de $n!$</h4>
+      Producto de todos los enteros positivos desde 1 hasta $n$. Ejemplos:
       <ul>
         <li>$3! = 1 \times 2 \times 3 = 6$</li>
         <li>$5! = 1 \times 2 \times 3 \times 4 \times 5 = 120$</li>
         <li>$8! = 40\,320$</li>
-        <li>$30! \approx 2{,}65 \times 10^{32}$ (un 265 seguido de 30 ceros)</li>
+        <li>$30! \approx 2{,}65 \times 10^{32}$</li>
       </ul>
-      Aunque un computador pudiera revisar <em>mil millones</em> de rutas por segundo,
-      con 30 pedidos terminaría mucho después de que el sol se apague. Por eso esa
-      vía sólo sirve para problemas muy pequeños.
+      A una tasa hipotética de evaluación de $10^{9}$ rutas por segundo, el
+      tiempo requerido para $n=30$ excede en muchos órdenes de magnitud la edad
+      del universo. Por lo tanto, la búsqueda exhaustiva sólo es aplicable a
+      instancias de tamaño reducido.
     </div>
-    <p class="rise">En el notebook lo probamos con $n$ entre 3 y 8 pedidos. La
-      tabla muestra cómo crece el tiempo:</p>
+    <p class="rise">En el notebook se realizó un experimento con $n$ entre 3 y 8
+      para cuantificar empíricamente el crecimiento del tiempo de cómputo:</p>
     <table class="rise">
       <caption>Tabla 1. Tiempos de fuerza bruta exacta sobre subconjuntos de n pedidos.</caption>
       <thead><tr><th>n</th><th>Permutaciones</th><th>Tiempo (s)</th><th>Distancia óptima (km)</th></tr></thead>
@@ -611,19 +587,20 @@
         <tr><td>8</td><td>40 320</td><td>2.7162</td><td>68.08</td></tr>
       </tbody>
     </table>
-    <p class="rise">Mira la columna de tiempo: con 3 pedidos tarda menos de un
-      milisegundo, con 8 pedidos ya son casi 3 segundos. Cada vez que sumamos un
-      pedido el tiempo se multiplica más o menos por $n$. Eso significa que con 30
-      pedidos no terminaría en años. Por eso necesitamos una <em>receta sencilla</em>
-      que dé una buena solución sin tener que probarlas todas. A esas recetas se
-      les llama <strong>heurísticas</strong>.</p>
+    <p class="rise">El tiempo de cómputo pasa de menos de un milisegundo con
+      $n=3$ a casi tres segundos con $n=8$. La razón entre tiempos consecutivos
+      tiende a multiplicar por $n$, comportamiento esperado en una complejidad
+      $\mathcal{O}(n!)$. Para $n=30$ la duración estimada es prohibitiva. Por
+      este motivo se recurre a procedimientos <strong>heurísticos</strong> que
+      producen soluciones de calidad aceptable en tiempo razonable.</p>
     <div class="explain rise">
-      <h4>¿Qué es una heurística?</h4>
-      Es una receta paso a paso para conseguir una solución <em>razonable</em>
-      rápidamente, sin garantizar que sea la mejor posible. Es como cuando organizas
-      tu maleta: no calculas todas las formas posibles de poner tus camisas, sólo las
-      acomodas de una manera lógica y listo. Aquí usamos dos heurísticas: <em>vecino
-      más cercano</em> y <em>2-opt</em>.
+      <h4>Definición de heurística</h4>
+      Procedimiento algorítmico que produce soluciones aproximadas a un problema
+      de optimización en tiempo polinomial, sin garantizar la obtención del
+      óptimo global. Se utiliza cuando la búsqueda exacta resulta computacionalmente
+      inviable. En este caso de estudio se aplican dos heurísticas en cascada:
+      <em>vecino más cercano</em> (NN) para una solución inicial y
+      <em>2-opt</em> para refinamiento local.
     </div>
   </div>
 </section>
@@ -640,7 +617,7 @@
       $$\sum_{i \in r} \text{Peso}_i \;\le\; C$$
     </div>
     <div class="explain rise">
-      <h4>¿Qué significa cada parte?</h4>
+      <h4>Desglose de componentes</h4>
       <ul>
         <li><strong>$r$</strong>: una ruta (el grupo de pedidos asignados a un vehículo).</li>
         <li><strong>$i \in r$</strong>: cada pedido $i$ que pertenece a esa ruta.</li>
@@ -665,38 +642,44 @@
 <section>
   <div class="wrap narrow">
     <div class="label rise"><span>§6 · Método</span><span>Heurísticas</span></div>
-    <h2 class="rise">Cómo armamos las rutas.</h2>
+    <h2 class="rise">Construcción de las rutas</h2>
 
-    <h3 class="rise">Paso 1. Barrido angular.</h3>
-    <p class="rise">Imaginamos al depósito en el centro y dibujamos una línea
-      imaginaria hacia cada pedido. Esa línea tiene un <em>ángulo</em>. Ordenamos los
-      pedidos en sentido horario (como las manecillas del reloj) y los vamos metiendo
-      a un vehículo uno tras otro hasta que el siguiente no cabría; ahí cerramos esa
-      ruta y empezamos otra. Esto se llama <em>heurística de barrido</em> y tiende
-      a poner pedidos vecinos en la misma ruta.</p>
+    <h3 class="rise">Paso 1. Barrido angular</h3>
+    <p class="rise">El <em>sweep heuristic</em> calcula, para cada pedido, el
+      ángulo polar respecto al depósito. Los pedidos se ordenan según ese ángulo
+      (por ejemplo, en sentido horario) y se agrupan secuencialmente en rutas:
+      se añade un pedido a la ruta actual mientras el peso acumulado no exceda
+      la capacidad del vehículo; al superarla se cierra la ruta y se inicia
+      otra. El procedimiento tiende a asignar pedidos geográficamente vecinos
+      al mismo vehículo, reduciendo solapamientos entre rutas.</p>
 
-    <h3 class="rise">Paso 2. Vecino más cercano (NN).</h3>
-    <p class="rise"><strong>NN</strong> son las siglas de <em>Nearest
-      Neighbor</em>, en español <em>vecino más cercano</em>. Una vez agrupados
-      los pedidos en un vehículo, hay que decidir en qué orden visitarlos. La
-      regla es muy simple: <em>desde donde estoy, voy al pedido no visitado
-      más cercano</em>. Lo repito hasta haber visitado todos y luego vuelvo al
-      depósito. Es una heurística <em>voraz</em> (toma la mejor decisión
-      inmediata sin pensar a futuro), $\mathcal{O}(n^2)$ en complejidad,
-      rápida pero subóptima: suele dejar tramos que se cruzan en el mapa, y
-      esos cruces son justo lo que el siguiente paso (2-opt) va a eliminar.</p>
+    <h3 class="rise">Paso 2. Vecino más cercano (NN)</h3>
+    <p class="rise"><strong>NN</strong> es la sigla de <em>Nearest Neighbor</em>
+      (vecino más cercano). Una vez agrupados los pedidos por vehículo, NN
+      determina el orden de visita dentro de cada ruta mediante una estrategia
+      <em>voraz</em>: desde el nodo actual selecciona el pedido no visitado más
+      cercano según la matriz de distancias, y repite el procedimiento hasta
+      visitar todos los nodos del grupo, regresando finalmente al depósito.
+      Su complejidad es $\mathcal{O}(n^2)$. Es eficiente pero subóptima:
+      frecuentemente produce rutas con tramos que se cruzan, que serán
+      corregidos en la siguiente etapa.</p>
 
-    <h3 class="rise">Paso 3. Mejora con 2-opt.</h3>
-    <p class="rise">2-opt es una idea sencilla: tomamos la ruta y <em>volteamos
-      un tramo de ella</em> para ver si queda más corta. Si sí, nos quedamos con la
-      nueva; si no, probamos otro tramo. Cuando ya ningún tramo se puede mejorar,
-      paramos.</p>
+    <h3 class="rise">Paso 3. Refinamiento con 2-opt</h3>
+    <p class="rise">El algoritmo 2-opt examina pares de aristas de la ruta y,
+      para cada par, evalúa si invertir el segmento intermedio reduce la
+      distancia total. Si la reducción es positiva, aplica el cambio; en caso
+      contrario, prueba el siguiente par. El procedimiento se repite hasta que
+      ningún intercambio reduzca la distancia: en ese punto se ha alcanzado un
+      óptimo local.</p>
     <div class="explain rise">
-      <h4>¿Por qué se llama 2-opt?</h4>
-      Porque en cada paso <em>cambia 2 conexiones</em> de la ruta: rompe dos
-      "vías" que estaban conectadas y las reconecta de otra forma. Visualmente
-      equivale a <em>deshacer cruces</em>: si la ruta dibuja una X en el mapa,
-      casi siempre se puede mejorar enderezando esa X.
+      <h4>Origen del nombre 2-opt</h4>
+      En cada movimiento se modifican exactamente <em>dos aristas</em> de la
+      ruta: se eliminan dos conexiones existentes y se sustituyen por una
+      configuración alternativa que invierte el segmento entre ellas.
+      Geométricamente, el procedimiento elimina cruces de aristas en el plano:
+      una intersección entre dos tramos puede deshacerse invirtiendo el
+      segmento intermedio, lo que reduce la distancia total cuando se cumple la
+      desigualdad triangular.
     </div>
     <pre class="codeblock"><span class="c"># 2-opt — la idea en pseudocódigo</span>
 mejor_ruta <span class="k">←</span> ruta inicial
@@ -709,19 +692,22 @@ repetir:
             mejor_d    <span class="k">←</span> distancia(candidato)
 hasta que ningún cambio mejore la ruta
 retornar mejor_ruta</pre>
-    <p class="rise"><strong>Solución óptima vs. heurística.</strong> La solución
-      <em>óptima</em> es literalmente la mejor posible. Una <em>heurística</em>
-      entrega una buena pero sin garantía. 2-opt encuentra mínimos
-      <em>locales</em>: la ruta es mejor que sus parientes cercanos, pero puede
-      existir otra todavía mejor que el algoritmo no encuentre.</p>
+    <p class="rise"><strong>Solución óptima frente a solución heurística.</strong>
+      La solución <em>óptima global</em> es la de menor distancia entre todas las
+      configuraciones posibles. Una solución <em>heurística</em> entrega una
+      configuración de calidad aceptable sin garantía de optimalidad. 2-opt
+      converge a un <em>óptimo local</em>: una ruta cuya distancia no puede
+      reducirse mediante ningún intercambio de dos aristas, aunque puedan
+      existir mejores soluciones inalcanzables por este tipo de movimiento.</p>
 
-    <p class="rise" style="margin-top:24px"><strong>2-opt en movimiento.</strong>
-      La animación de abajo no usa los datos del ejercicio, sino un caso de
-      juguete con 14 ciudades aleatorias. Empieza con una ruta deliberadamente
-      enredada (con cruces) y aplica 2-opt: en cada paso identifica dos aristas
-      cuyos tramos se cruzan, las marca en rojo, invierte el segmento de en
-      medio y muestra cómo la distancia total baja. Termina cuando ningún
-      cambio reduce más la distancia.</p>
+    <p class="rise" style="margin-top:24px"><strong>Visualización de 2-opt.</strong>
+      La siguiente animación ilustra el funcionamiento del algoritmo sobre una
+      instancia sintética de 14 nodos generados aleatoriamente (no corresponde
+      a los datos del caso de estudio). La ruta inicial se construye
+      aleatoriamente para garantizar cruces de aristas. En cada iteración el
+      algoritmo identifica un par de aristas cuya inversión reduce la distancia
+      total (resaltado en rojo), aplica la inversión y actualiza la métrica.
+      El proceso finaliza al alcanzar un óptimo local.</p>
 
     <div class="anim rise" id="anim2opt">
       <div class="anim-bar">
@@ -751,9 +737,10 @@ retornar mejor_ruta</pre>
     <h2 class="rise">Resultados.</h2>
   </div>
   <div class="wrap narrow">
-    <p class="rise">Aplicar los tres pasos (barrido angular, agrupar por
-      capacidad, vecino más cercano, 2-opt) sobre los 30 pedidos generó cuatro
-      rutas que respetan la capacidad de 15 kg. Las distancias están en kilómetros
+    <p class="rise">La aplicación secuencial de barrido angular, asignación por
+      capacidad, vecino más cercano y refinamiento 2-opt sobre los 30 pedidos
+      seleccionados produjo cuatro rutas factibles que respetan la capacidad
+      de 15 kg por vehículo. Las distancias se expresan en kilómetros y fueron
       calculadas con Haversine.</p>
     <table class="rise">
       <caption>Tabla 2. Resumen de las rutas generadas. C = 15 kg.</caption>
@@ -766,12 +753,13 @@ retornar mejor_ruta</pre>
         <tr><td>Total</td><td>30</td><td>45.57</td><td>168.51</td><td>161.60</td><td>−6.92</td></tr>
       </tbody>
     </table>
-    <p class="rise">2-opt mejoró las rutas con más pedidos (vehículos 1 y 3). Las
-      rutas cortas (vehículos 2 y 4) no se pudieron mejorar: en una ruta de dos
-      paradas voltear el tramo da el mismo recorrido (la matriz es simétrica), y
-      en rutas con pocos pedidos vecino más cercano ya estaba en su mínimo local.
-      La reducción total fue de <strong>6,92 km</strong> (un 4,1 % menos), ganada
-      en milisegundos de cálculo.</p>
+    <p class="rise">2-opt redujo la distancia en las rutas con mayor número de
+      pedidos (vehículos 1 y 3). Las rutas cortas (vehículos 2 y 4) no admitieron
+      mejora: en una ruta de dos paradas la inversión del segmento produce el
+      mismo recorrido al ser la matriz simétrica, y en rutas con pocos pedidos
+      la solución NN ya coincide con un óptimo local. La reducción total fue de
+      <strong>6,92 km</strong> (un 4,1 % respecto a la solución NN), obtenida
+      en tiempo de cálculo del orden de milisegundos.</p>
   </div>
 
   <div class="wrap" style="margin-top:32px">
@@ -794,13 +782,13 @@ retornar mejor_ruta</pre>
       refinamiento.</div>
     <div class="artifact-row rise" style="margin-top:14px">
       <span class="label">Notebook que genera estos resultados</span>
-      <a class="pill primary" href="Optimizacion_Rutasv3.ipynb" download>
+      <a class="pill primary" href="notebooks/Optimizacion_Rutasv3.ipynb" download>
         <span class="ic">↓</span><span>Descargar .ipynb</span>
       </a>
-      <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/Optimizacion_Rutasv3.ipynb" target="_blank" rel="noopener">
+      <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/notebooks/Optimizacion_Rutasv3.ipynb" target="_blank" rel="noopener">
         <span class="ic">↗</span><span>Ver en GitHub</span>
       </a>
-      <a class="pill" href="https://nbviewer.org/github/ACJUGGLER645/oli/blob/main/Optimizacion_Rutasv3.ipynb" target="_blank" rel="noopener">
+      <a class="pill" href="https://nbviewer.org/github/ACJUGGLER645/oli/blob/main/notebooks/Optimizacion_Rutasv3.ipynb" target="_blank" rel="noopener">
         <span class="ic">⊞</span><span>Abrir en nbviewer</span>
       </a>
     </div>
@@ -878,40 +866,155 @@ retornar mejor_ruta</pre>
   </div>
 </section>
 
-<!-- VISOR DE DOCUMENTOS -->
+<!-- §10 · NOTEBOOKS: ORIGINAL VS. PROPUESTO -->
 <section>
   <div class="wrap">
-    <div class="label rise"><span>§10 · Documentos</span><span>Visor</span></div>
-    <h2 class="rise">Documentos del proyecto.</h2>
+    <div class="label rise"><span>§10 · Notebooks</span><span>Original vs. propuesto</span></div>
+    <h2 class="rise">Notebooks: original del docente y versión propuesta</h2>
   </div>
   <div class="wrap narrow">
-    <p class="rise">Los dos documentos en PDF se pueden leer aquí mismo, sin
-      necesidad de descargarlos. Si tu navegador no soporta la vista embebida
-      aparecerán enlaces para abrir o descargar el archivo.</p>
-  </div>
+    <p class="rise">El notebook utilizado como punto de partida es el propuesto
+      por el docente del curso (<em>Optimización de rutas de última milla</em>,
+      autor: Elías Buitrago Bolívar). Para garantizar la trazabilidad del
+      ejercicio se conserva una copia íntegra y sin ejecutar de ese notebook
+      original. Las modificaciones realizadas por el equipo se encuentran en un
+      segundo notebook (<code>Optimizacion_Rutasv3.ipynb</code>), que se entrega
+      ya ejecutado con sus salidas embebidas. Los datos empleados son los
+      indicados por el docente (dataset Olist de Kaggle, ciudad São Paulo).</p>
 
+    <table class="rise">
+      <caption>Tabla 3. Cambios introducidos en la versión propuesta respecto al notebook original.</caption>
+      <thead>
+        <tr><th>Aspecto</th><th>Notebook original</th><th>Notebook propuesto (v3)</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Identificación</td>
+          <td>Sin sección de autores</td>
+          <td>Celda inicial con programa, integrantes y docente</td>
+        </tr>
+        <tr>
+          <td>Configuración Colab</td>
+          <td>Instalaciones inline genéricas</td>
+          <td>Sección dedicada con carga de <code>kaggle.json</code> vía <code>google.colab.files</code></td>
+        </tr>
+        <tr>
+          <td>Capacidad por vehículo</td>
+          <td>$C = 100$ kg</td>
+          <td>$C = 15$ kg (justificado para reparto urbano de productos livianos)</td>
+        </tr>
+        <tr>
+          <td>Selección de la muestra</td>
+          <td>Filtro general por ciudad y estado de entrega</td>
+          <td>Adicionalmente: peso en percentil 50–90 y muestra aleatoria de 30 pedidos con <code>random_state=42</code></td>
+        </tr>
+        <tr>
+          <td>Interpretación de complejidad</td>
+          <td>Plantilla en blanco (<em>"Escriba aquí la interpretación…"</em>)</td>
+          <td>Texto completo redactado por el equipo</td>
+        </tr>
+        <tr>
+          <td>Sección de informe final</td>
+          <td>No incluida</td>
+          <td>Bloque añadido al final con la lectura de resultados</td>
+        </tr>
+        <tr>
+          <td>Estado de ejecución</td>
+          <td>Sin ejecutar (entregado tal cual del docente)</td>
+          <td>Ejecutado de principio a fin (salidas embebidas, 4 rutas, 161,60 km)</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="rise">El resto de la lógica (Haversine, matriz de distancias,
+      fuerza bruta acotada, barrido angular, NN y 2-opt) se conserva del
+      notebook original. Los cambios se limitan a parametrización, justificación
+      del rango de pesos y redacción del informe embebido.</p>
+  </div>
+</section>
+
+<!-- §11 · COMPONENTES UTILIZADOS -->
+<section>
   <div class="wrap">
-    <div class="pdfview rise" id="pdfview">
-      <div class="tabs" role="tablist">
-        <button type="button" data-target="informe.pdf" class="active">
-          informe.pdf · 9 págs
-        </button>
-        <span class="spacer"></span>
-        <a class="openext" id="pdf-open" target="_blank" rel="noopener" href="informe.pdf">
-          ↗ abrir en pestaña nueva
-        </a>
-      </div>
-      <object id="pdf-frame" data="informe.pdf" type="application/pdf" class="frame">
-        <div class="fallback">
-          Tu navegador no puede mostrar el PDF embebido.<br>
-          <a href="informe.pdf" download>Descargar el archivo</a> o
-          <a href="informe.pdf" target="_blank" rel="noopener">abrirlo en una pestaña nueva</a>.
-        </div>
-      </object>
-      <div class="meta">
-        <span id="pdf-name">informe.pdf — Informe técnico final</span>
-        <span>Servido directamente desde el repositorio</span>
-      </div>
+    <div class="label rise"><span>§11 · Componentes</span><span>Descargas</span></div>
+    <h2 class="rise">Componentes utilizados</h2>
+  </div>
+  <div class="wrap narrow">
+    <p class="rise">Todos los componentes del proyecto están versionados en el
+      repositorio público. La tabla siguiente concentra los enlaces de descarga
+      directa y de visualización en línea.</p>
+    <div class="arts rise">
+      <table>
+        <thead>
+          <tr><th>Archivo</th><th>Descripción</th><th class="actions" style="text-align:right">Acciones</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="ext">IPYNB</span><code>notebooks/original.ipynb</code></td>
+            <td>Notebook original del docente, conservado sin ejecutar.</td>
+            <td class="actions">
+              <a class="pill primary" href="notebooks/original.ipynb" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/notebooks/original.ipynb" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">IPYNB</span><code>notebooks/Optimizacion_Rutasv3.ipynb</code></td>
+            <td>Notebook propuesto, ejecutado con salidas embebidas.</td>
+            <td class="actions">
+              <a class="pill primary" href="notebooks/Optimizacion_Rutasv3.ipynb" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/notebooks/Optimizacion_Rutasv3.ipynb" target="_blank" rel="noopener">↗ Ver</a>
+              <a class="pill" href="https://nbviewer.org/github/ACJUGGLER645/oli/blob/main/notebooks/Optimizacion_Rutasv3.ipynb" target="_blank" rel="noopener">⊞ nbviewer</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">CSV</span><code>data/pedidos_logiexpress_limpio.csv</code></td>
+            <td>30 pedidos seleccionados (id, lat, lon, peso, ciudad, estado).</td>
+            <td class="actions">
+              <a class="pill primary" href="data/pedidos_logiexpress_limpio.csv" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/data/pedidos_logiexpress_limpio.csv" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">CSV</span><code>data/matriz_distancias_haversine.csv</code></td>
+            <td>Matriz $31 \times 31$ con distancias geodésicas entre todos los nodos.</td>
+            <td class="actions">
+              <a class="pill primary" href="data/matriz_distancias_haversine.csv" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/data/matriz_distancias_haversine.csv" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">PDF</span><code>informe.pdf</code></td>
+            <td>Informe técnico final con marca de agua institucional ETITC.</td>
+            <td class="actions">
+              <a class="pill primary" href="informe.pdf" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/informe.pdf" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">TEX</span><code>informe.tex</code></td>
+            <td>Código fuente LaTeX del informe (recompilable con <code>pdflatex</code>).</td>
+            <td class="actions">
+              <a class="pill primary" href="informe.tex" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/informe.tex" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">MD</span><code>README.md</code></td>
+            <td>Documentación principal del repositorio.</td>
+            <td class="actions">
+              <a class="pill primary" href="README.md" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/README.md" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ext">HTML</span><code>index.html</code></td>
+            <td>Versión web del informe (servida como GitHub Pages).</td>
+            <td class="actions">
+              <a class="pill primary" href="index.html" download>↓ Descargar</a>
+              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/index.html" target="_blank" rel="noopener">↗ Ver</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </section>
@@ -933,68 +1036,11 @@ retornar mejor_ruta</pre>
         <em>Introduction to Algorithms</em> (3rd ed.). MIT Press.</li>
     </ol>
 
-    <h4 style="margin-top:32px">Artefactos del proyecto</h4>
-    <p style="margin-bottom:14px">Todo lo entregable está versionado en
+    <p style="margin-top:24px;margin-bottom:14px">Todos los componentes del
+      proyecto están versionados en
       <a href="https://github.com/ACJUGGLER645/oli" target="_blank" rel="noopener">github.com/ACJUGGLER645/oli</a>.
-      Para cada archivo puedes descargarlo directamente o previsualizarlo en GitHub.</p>
-    <div class="arts">
-      <table>
-        <thead>
-          <tr><th>Archivo</th><th>Descripción</th><th class="actions" style="text-align:right">Acciones</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><span class="ext">IPYNB</span><code>Optimizacion_Rutasv3.ipynb</code></td>
-            <td>Notebook Jupyter ejecutado de principio a fin.</td>
-            <td class="actions">
-              <a class="pill primary" href="Optimizacion_Rutasv3.ipynb" download>↓ Descargar</a>
-              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/Optimizacion_Rutasv3.ipynb" target="_blank" rel="noopener">↗ Ver</a>
-              <a class="pill" href="https://nbviewer.org/github/ACJUGGLER645/oli/blob/main/Optimizacion_Rutasv3.ipynb" target="_blank" rel="noopener">⊞ nbviewer</a>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="ext">CSV</span><code>pedidos_logiexpress_limpio.csv</code></td>
-            <td>Conjunto final de 30 pedidos (id, lat, lon, peso, ciudad, estado).</td>
-            <td class="actions">
-              <a class="pill primary" href="pedidos_logiexpress_limpio.csv" download>↓ Descargar</a>
-              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/pedidos_logiexpress_limpio.csv" target="_blank" rel="noopener">↗ Ver</a>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="ext">CSV</span><code>matriz_distancias_haversine.csv</code></td>
-            <td>Matriz 31 × 31 con todas las distancias entre nodos.</td>
-            <td class="actions">
-              <a class="pill primary" href="matriz_distancias_haversine.csv" download>↓ Descargar</a>
-              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/matriz_distancias_haversine.csv" target="_blank" rel="noopener">↗ Ver</a>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="ext">PDF</span><code>informe.pdf</code></td>
-            <td>Informe técnico final, 9 páginas con marca de agua ETITC.</td>
-            <td class="actions">
-              <a class="pill primary" href="informe.pdf" download>↓ Descargar</a>
-              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/informe.pdf" target="_blank" rel="noopener">↗ Ver</a>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="ext">TEX</span><code>informe.tex</code></td>
-            <td>Fuente LaTeX del informe (recompilable con pdflatex).</td>
-            <td class="actions">
-              <a class="pill primary" href="informe.tex" download>↓ Descargar</a>
-              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/informe.tex" target="_blank" rel="noopener">↗ Ver</a>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="ext">HTML</span><code>index.html</code></td>
-            <td>Esta misma página (versión web del informe, servida como GitHub Pages).</td>
-            <td class="actions">
-              <a class="pill primary" href="index.html" download>↓ Descargar</a>
-              <a class="pill" href="https://github.com/ACJUGGLER645/oli/blob/main/index.html" target="_blank" rel="noopener">↗ Ver</a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+      La tabla completa de descargas está disponible en la sección
+      <a href="#" onclick="document.querySelectorAll('section')[document.querySelectorAll('section').length-1].scrollIntoView({behavior:'smooth'});return false;">Componentes utilizados</a>.</p>
 
     <div class="meta">
       <span>ETITC · Programa de Tecnología en Desarrollo de Software</span>
@@ -1438,38 +1484,6 @@ retornar mejor_ruta</pre>
       // sec sigue display:none; nada más que hacer
     }
   })();
-
-  // === VISOR DE PDFs (tabs) ===
-  const pdfTabs = document.querySelectorAll('#pdfview .tabs button');
-  const pdfFrame = document.getElementById('pdf-frame');
-  const pdfOpen = document.getElementById('pdf-open');
-  const pdfName = document.getElementById('pdf-name');
-  const pdfLabels = {
-    'informe.pdf': 'informe.pdf — Informe técnico final'
-  };
-  pdfTabs.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = btn.dataset.target;
-      if (!target) return;
-      pdfTabs.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      // Reemplazar el <object> entero para forzar recarga estable
-      const newObj = document.createElement('object');
-      newObj.id = 'pdf-frame';
-      newObj.data = target;
-      newObj.type = 'application/pdf';
-      newObj.className = 'frame';
-      newObj.innerHTML = `<div class="fallback">
-        Tu navegador no puede mostrar el PDF embebido.<br>
-        <a href="${target}" download>Descargar el archivo</a> o
-        <a href="${target}" target="_blank" rel="noopener">abrirlo en una pestaña nueva</a>.
-      </div>`;
-      const oldObj = document.getElementById('pdf-frame');
-      oldObj.parentNode.replaceChild(newObj, oldObj);
-      pdfOpen.href = target;
-      pdfName.textContent = pdfLabels[target] || target;
-    });
-  });
 
   // === VISTAS TIPO EXCEL (.head() de cada CSV) ===
   // pedidos_logiexpress_limpio.csv - primeras 10 filas

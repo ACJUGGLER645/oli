@@ -127,33 +127,28 @@ de \textbf{161.60 km}, una mejora de 6.92 km frente al ordenamiento inicial.
 \newpage
 
 % =====================================================================
-\section{Que problema estamos resolviendo}
-LogiExpress es una empresa ficticia de reparto urbano. Cada manana
-recibe varios pedidos desde un unico centro de distribucion (deposito)
-y debe entregarlos a clientes ubicados en distintas zonas de la
-ciudad. Cada pedido tiene una ubicacion (un punto en el mapa) y un peso.
-Cada vehiculo solo puede cargar hasta cierto peso maximo.
+\section{Planteamiento del problema}
+LogiExpress es una operacion logistica ficticia que debe atender un
+conjunto de pedidos desde un unico centro de distribucion (deposito) al
+que cada vehiculo regresa una vez completada su ruta. Cada pedido tiene
+una ubicacion geografica y un peso conocidos. Cada vehiculo dispone de
+una capacidad maxima de carga.
 
-La empresa necesita dos cosas al mismo tiempo:
+El problema requiere satisfacer simultaneamente dos condiciones:
 \begin{itemize}[leftmargin=*,nosep]
-  \item \textbf{Que los pedidos quepan} en los vehiculos: ninguno debe
-        exceder su capacidad.
-  \item \textbf{Que se recorra la menor distancia posible}, para gastar
-        menos combustible, tiempo y emisiones.
+  \item \textbf{Factibilidad de carga:} la suma de los pesos de los
+        pedidos asignados a un vehiculo no debe superar la capacidad
+        del mismo.
+  \item \textbf{Minimizacion de la distancia total recorrida}, asociada
+        a una reduccion proporcional del consumo de combustible, tiempo
+        operativo y emisiones.
 \end{itemize}
 
-Este escenario es una version simplificada de un problema clasico de
-investigacion de operaciones llamado \emph{Problema de Ruteo de
-Vehiculos con Capacidad}, conocido por sus siglas en ingles como CVRP
-(\emph{Capacitated Vehicle Routing Problem}).
-
-\begin{explica}{En palabras simples}
-Imagina que tu eres el repartidor. Te dan 30 paquetes para entregar,
-todos tienen una direccion y un peso, y tu camioneta solo puede cargar
-hasta 15 kilos por viaje. Tienes que decidir: cuantos viajes hacer, que
-paquetes meter juntos en cada viaje y en que orden visitarlos para
-manejar lo menos posible. Eso es exactamente el CVRP.
-\end{explica}
+Este escenario corresponde a una version simplificada del \emph{Problema
+de Ruteo de Vehiculos con Capacidad}, conocido por sus siglas en ingles
+como CVRP (\emph{Capacitated Vehicle Routing Problem}), una
+generalizacion del clasico Problema del Vendedor Viajero (TSP) que
+incorpora la restriccion de capacidad.
 
 % =====================================================================
 \section{El dataset: de donde salen los datos}
@@ -215,16 +210,18 @@ pedidos).
 y sus columnas: id, latitud, longitud, peso, ciudad, estado.}
 
 % =====================================================================
-\section{Como medir distancias entre dos puntos del mapa}
-Para construir rutas necesitamos saber que tan lejos esta cada pedido
-de los demas. Una idea ingenua seria usar la regla de Pitagoras sobre
-las coordenadas (latitud y longitud) como si fueran un plano. Eso esta
-mal: la Tierra es \emph{curva}, no plana, y un grado de longitud no
-mide lo mismo cerca del ecuador que cerca de los polos.
+\section{Medicion de distancia entre puntos geograficos}
+La construccion de rutas requiere conocer la distancia entre cada par
+de puntos. Una aproximacion inicial consistiria en aplicar el teorema
+de Pitagoras sobre las coordenadas (latitud y longitud) tratandolas
+como un plano cartesiano. Este procedimiento es incorrecto porque la
+superficie terrestre no es plana: la longitud de un grado de longitud
+varia con la latitud (es maxima en el ecuador y nula en los polos),
+por lo que la aproximacion plana acumula error sistematico.
 
-Lo correcto es usar la \textbf{formula de Haversine}, una formula con
-mas de 200 anos de antiguedad que aproxima la distancia sobre la
-superficie de una esfera (como si la Tierra fuera una pelota perfecta):
+Por lo tanto se emplea la \textbf{formula de Haversine}, que calcula
+la distancia geodesica entre dos puntos sobre la superficie de una
+esfera (modelo esferico de la Tierra):
 
 \begin{equation}
 d \;=\; 2R\,\arcsin\!\left(\sqrt{\,\sin^2\!\left(\tfrac{\varphi_2-\varphi_1}{2}\right)
@@ -232,7 +229,7 @@ d \;=\; 2R\,\arcsin\!\left(\sqrt{\,\sin^2\!\left(\tfrac{\varphi_2-\varphi_1}{2}\
 \label{eq:haversine}
 \end{equation}
 
-\begin{explica}{Que significa cada simbolo}
+\begin{explica}{Desglose de componentes}
 \begin{itemize}[leftmargin=*,nosep]
   \item $d$: la distancia entre los dos puntos, en kilometros. Es lo
         que queremos calcular.
@@ -310,12 +307,13 @@ Conclusion: para 30 pedidos no podemos buscar la ruta perfecta. Hay que
 conformarse con una ruta \emph{suficientemente buena} usando
 \textbf{heuristicas}.
 
-\begin{explica}{Que es una heuristica}
-Es una \emph{receta} para conseguir una solucion buena rapido, sin
-garantizar que sea la mejor. Es como cuando organizas tu maleta: no
-calculas la mejor configuracion posible de todos tus cuadernos, solo
-los acomodas razonablemente y listo. En este informe usamos dos
-heuristicas: \emph{vecino mas cercano} (NN) y \emph{2-opt}.
+\begin{explica}{Definicion de heuristica}
+Procedimiento algoritmico que produce soluciones aproximadas a un
+problema de optimizacion en tiempo polinomial, sin garantizar la
+obtencion del optimo global. Se utiliza cuando la busqueda exacta
+resulta computacionalmente inviable. En este informe se aplican dos
+heuristicas en cascada: \emph{vecino mas cercano} (NN) para una
+solucion inicial y \emph{2-opt} para refinamiento local.
 \end{explica}
 
 % =====================================================================
@@ -329,7 +327,7 @@ no puede pasarse del limite:
 \label{eq:capacidad}
 \end{equation}
 
-\begin{explica}{Que significa cada simbolo}
+\begin{explica}{Desglose de componentes}
 \begin{itemize}[leftmargin=*,nosep]
   \item $r$: una ruta, es decir, el grupo de pedidos que asignamos a
         un vehiculo.
@@ -352,42 +350,49 @@ $\mathbf{C = 15}$ kg, que es coherente con una flota de motos o
 bicicletas electricas para reparto urbano de productos pequenos.
 
 % =====================================================================
-\section{Como armamos las rutas}
+\section{Construccion de las rutas}
 
 \subsection{Paso 1. Barrido angular}
-Imaginamos al deposito en el centro y dibujamos una linea imaginaria
-hacia cada pedido. Esa linea tiene un \emph{angulo}. Ordenamos los
-pedidos en sentido horario (como las manecillas del reloj) y vamos
-agrupandolos uno tras otro hasta que el siguiente no cabria en el
-vehiculo; ahi cerramos esa ruta y empezamos otra.
-
-Esto se llama \emph{sweep heuristic} (heuristica de barrido) y tiende a
-poner pedidos vecinos en el mismo vehiculo.
+El \emph{sweep heuristic} calcula, para cada pedido, el angulo polar
+respecto al deposito. Los pedidos se ordenan por ese angulo (por
+ejemplo, en sentido horario) y se asignan secuencialmente a rutas: se
+incorpora un pedido a la ruta actual mientras el peso acumulado no
+supere la capacidad; al excederla se cierra la ruta y se inicia otra.
+El procedimiento tiende a agrupar pedidos geograficamente cercanos en
+el mismo vehiculo.
 
 \subsection{Paso 2. Vecino mas cercano (NN)}
-Dentro de cada ruta hay que decidir en que orden visitar los pedidos.
-La regla es muy simple: \emph{desde donde estoy, voy al pedido no
-visitado mas cercano}. Se repite hasta haber visitado todos. Es rapido
-y casi siempre da una ruta razonable, aunque no la mejor.
+Definidos los grupos, NN determina el orden de visita dentro de cada
+ruta mediante una estrategia voraz: desde el nodo actual se selecciona
+el pedido no visitado mas cercano segun la matriz de distancias, y se
+repite el proceso hasta agotar el grupo, regresando al deposito.
+Su complejidad es $\mathcal{O}(n^2)$. Es eficiente pero subóptima:
+frecuentemente produce tramos que se cruzan entre si.
 
-\subsection{Paso 3. Mejora local con 2-opt}
-2-opt es una idea sencilla: tomamos la ruta y \emph{volteamos un tramo
-de ella} para ver si queda mas corta. Si si, nos quedamos con la nueva;
-si no, probamos otro tramo. Cuando ya ningun tramo se puede mejorar,
-paramos.
+\subsection{Paso 3. Refinamiento local con 2-opt}
+El algoritmo 2-opt examina pares de aristas de la ruta y evalua si la
+inversion del segmento intermedio reduce la distancia total. Si la
+reduccion es positiva, aplica el cambio; en caso contrario, prueba el
+siguiente par. El proceso se repite hasta que ningun intercambio
+reduzca la distancia: en ese punto se ha alcanzado un optimo local.
 
-\begin{explica}{Por que se llama 2-opt}
-Porque en cada paso \emph{cambia 2 conexiones} de la ruta: rompe dos
-``vias'' que estaban conectadas y las reconecta de otra forma.
-Visualmente equivale a \emph{deshacer cruces}: si la ruta dibuja una
-X, casi siempre se puede mejorar enderezando esa X.
+\begin{explica}{Origen del nombre 2-opt}
+En cada movimiento se modifican exactamente \emph{dos aristas} de la
+ruta: se eliminan dos conexiones existentes y se sustituyen por una
+configuracion alternativa que invierte el segmento entre ellas.
+Geometricamente, el procedimiento elimina cruces de aristas en el
+plano: una interseccion entre dos tramos puede deshacerse invirtiendo
+el segmento intermedio, lo que reduce la distancia total cuando se
+cumple la desigualdad triangular.
 \end{explica}
 
-\paragraph{Solucion optima vs.\ heuristica.} La solucion \emph{optima}
-es literalmente la mejor posible. Una \emph{heuristica} entrega una
-buena pero sin garantia. 2-opt encuentra \emph{minimos locales}: la
-ruta es mejor que sus parientes cercanos, pero puede existir una
-todavia mejor lejos que el algoritmo no encuentre.
+\paragraph{Solucion optima frente a solucion heuristica.} La solucion
+\emph{optima global} es la de menor distancia entre todas las
+configuraciones posibles. Una \emph{heuristica} entrega una solucion
+de calidad aceptable sin garantia de optimalidad. 2-opt converge a un
+\emph{optimo local}: una ruta cuya distancia no puede reducirse
+mediante ningun intercambio de dos aristas, aunque puedan existir
+mejores soluciones inalcanzables por este tipo de movimiento.
 
 \screenshot{mapa-inicial}{Mapa de los 30 pedidos seleccionados, con el
 deposito marcado en rojo.}
@@ -435,6 +440,40 @@ color, y el deposito en rojo.}
 \end{itemize}
 
 % =====================================================================
+\section{Notebooks empleados}
+El notebook de partida es el propuesto por el docente del curso
+(\emph{Optimizacion de rutas de ultima milla}, autor: Elias Buitrago
+Bolivar). El equipo decidio \textbf{conservar el notebook original sin
+ejecutar} como evidencia de la version recibida y entregar las
+modificaciones en un segundo notebook ejecutado. Asimismo, los datos
+empleados son los indicados por el docente: el dataset publico de Olist
+de Kaggle, con foco en la ciudad de Sao Paulo.
+
+\begin{table}[h!]
+\centering
+\caption{Cambios introducidos en la version propuesta respecto al notebook original.}
+\label{tab:nb-cambios}
+\begin{tabular}{p{3.5cm}p{4.7cm}p{5.2cm}}
+\toprule
+\textbf{Aspecto} & \textbf{Notebook original} & \textbf{Notebook propuesto (v3)} \\
+\midrule
+Identificacion       & Sin seccion de autores                 & Celda inicial con programa, integrantes y docente \\
+Configuracion Colab  & Instalaciones \emph{inline} genericas  & Seccion dedicada con carga de \texttt{kaggle.json} via \texttt{google.colab.files} \\
+Capacidad por vehiculo & $C = 100$ kg                         & $C = 15$ kg (justificado para reparto urbano de productos livianos) \\
+Seleccion de la muestra & Filtro general por ciudad y estado de entrega & Adicionalmente: peso en percentil 50--90 y muestra aleatoria de 30 pedidos con \texttt{random\_state=42} \\
+Interpretacion de complejidad & Plantilla en blanco           & Texto completo redactado por el equipo \\
+Seccion de informe final & No incluida                        & Bloque anadido al final con la lectura de resultados \\
+Estado de ejecucion  & Sin ejecutar                           & Ejecutado de principio a fin (4 rutas, 161,60 km) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El resto de la logica (Haversine, matriz de distancias, fuerza bruta
+acotada, barrido angular, NN y 2-opt) se conserva del notebook
+original; las modificaciones se limitan a parametrizacion, justificacion
+del rango de pesos y redaccion del informe embebido.
+
+% =====================================================================
 \section{Limitaciones}
 \begin{itemize}[leftmargin=*,nosep]
   \item Haversine entrega distancia en linea recta sobre la esfera. La
@@ -474,12 +513,16 @@ color, y el deposito en rojo.}
 
 % =====================================================================
 \appendix
-\section*{Anexo. Archivos producidos}
+\section*{Anexo. Estructura del repositorio}
 \begin{itemize}[leftmargin=*,nosep]
-  \item \texttt{Optimizacion\_Rutasv3.ipynb} - notebook ejecutado.
-  \item \texttt{pedidos\_logiexpress\_limpio.csv} - los 30 pedidos.
-  \item \texttt{matriz\_distancias\_haversine.csv} - matriz 31$\times$31.
-  \item \texttt{scrollytelling.html} - version web del informe.
+  \item \texttt{notebooks/original.ipynb} - notebook original del docente, conservado sin ejecutar.
+  \item \texttt{notebooks/Optimizacion\_Rutasv3.ipynb} - notebook propuesto, ejecutado con salidas embebidas.
+  \item \texttt{data/pedidos\_logiexpress\_limpio.csv} - 30 pedidos seleccionados.
+  \item \texttt{data/matriz\_distancias\_haversine.csv} - matriz $31 \times 31$ de distancias geodesicas.
+  \item \texttt{informe.tex} / \texttt{informe.pdf} - codigo fuente y PDF del informe.
+  \item \texttt{index.html} - version web del informe (GitHub Pages).
+  \item \texttt{README.md} - documentacion principal del repositorio.
+  \item \texttt{assets/} - imagenes incluidas en el informe (marca de agua y capturas).
 \end{itemize}
 
 \end{document}
