@@ -189,6 +189,43 @@
   .figrow .cell{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#666}
   .figrow .cell b{display:block;font-family:var(--serif);font-size:34px;font-weight:600;letter-spacing:-0.01em;color:var(--ink);margin-bottom:4px;text-transform:none}
 
+  /* Animación 2-opt */
+  .anim{margin:24px 0;border:1px solid var(--ink);background:#0a0a0a;color:var(--paper)}
+  .anim .anim-bar{
+    background:#1a1a1a;border-bottom:1px solid #333;padding:10px 14px;
+    display:flex;gap:14px;align-items:center;
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+  }
+  .anim .anim-bar button{
+    background:transparent;border:1px solid #555;color:var(--paper);
+    padding:5px 12px;font-family:inherit;font-size:11px;letter-spacing:.1em;
+    cursor:pointer;text-transform:uppercase;transition:background .15s;
+  }
+  .anim .anim-bar button:hover{background:#333}
+  .anim .anim-bar button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .anim .anim-bar button.primary:hover{background:#0033cc}
+  .anim .anim-bar .stat{margin-left:auto;display:flex;gap:18px;color:#aaa;font-size:10px}
+  .anim .anim-bar .stat b{color:var(--paper);font-weight:600;font-family:var(--mono)}
+  .anim .anim-stage{background:#0a0a0a;padding:14px;position:relative}
+  .anim .anim-stage svg{width:100%;height:auto;display:block;max-height:420px}
+  .anim .anim-caption{
+    background:#111;border-top:1px solid #333;padding:14px 18px;
+    font-size:12.5px;color:#bbb;line-height:1.55;min-height:42px;
+  }
+  .anim .anim-caption b{color:var(--paper)}
+
+  /* Sección OSRM (oculta hasta que cargue OK) */
+  #osrm-section{display:none}
+  #osrm-section.ready{display:block}
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  .compare-grid > div{border:1px solid var(--ink);background:var(--paper-dim)}
+  .compare-grid > div h4{
+    margin:0;padding:8px 14px;background:#1a1a1a;color:var(--paper);
+    font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;font-weight:600;
+  }
+  .compare-grid .mini-map{width:100%;height:360px;background:#eee}
+  @media (max-width:780px){.compare-grid{grid-template-columns:1fr}}
+
   /* Visor PDF embebido */
   .pdfview{margin:24px 0;border:1px solid var(--ink);background:var(--paper)}
   .pdfview .tabs{
@@ -638,11 +675,16 @@
       ruta y empezamos otra. Esto se llama <em>heurística de barrido</em> y tiende
       a poner pedidos vecinos en la misma ruta.</p>
 
-    <h3 class="rise">Paso 2. Vecino más cercano.</h3>
-    <p class="rise">Una vez agrupados los pedidos en un vehículo, ¿en qué orden los
-      visitamos? Regla simple: <em>desde donde estoy, voy al pedido no visitado
-      más cercano</em>. Se repite hasta haber visitado todos. Es rápido y casi
-      siempre da una ruta razonable, aunque no la mejor posible.</p>
+    <h3 class="rise">Paso 2. Vecino más cercano (NN).</h3>
+    <p class="rise"><strong>NN</strong> son las siglas de <em>Nearest
+      Neighbor</em>, en español <em>vecino más cercano</em>. Una vez agrupados
+      los pedidos en un vehículo, hay que decidir en qué orden visitarlos. La
+      regla es muy simple: <em>desde donde estoy, voy al pedido no visitado
+      más cercano</em>. Lo repito hasta haber visitado todos y luego vuelvo al
+      depósito. Es una heurística <em>voraz</em> (toma la mejor decisión
+      inmediata sin pensar a futuro), $\mathcal{O}(n^2)$ en complejidad,
+      rápida pero subóptima: suele dejar tramos que se cruzan en el mapa, y
+      esos cruces son justo lo que el siguiente paso (2-opt) va a eliminar.</p>
 
     <h3 class="rise">Paso 3. Mejora con 2-opt.</h3>
     <p class="rise">2-opt es una idea sencilla: tomamos la ruta y <em>volteamos
@@ -672,6 +714,33 @@ retornar mejor_ruta</pre>
       entrega una buena pero sin garantía. 2-opt encuentra mínimos
       <em>locales</em>: la ruta es mejor que sus parientes cercanos, pero puede
       existir otra todavía mejor que el algoritmo no encuentre.</p>
+
+    <p class="rise" style="margin-top:24px"><strong>2-opt en movimiento.</strong>
+      La animación de abajo no usa los datos del ejercicio, sino un caso de
+      juguete con 14 ciudades aleatorias. Empieza con una ruta deliberadamente
+      enredada (con cruces) y aplica 2-opt: en cada paso identifica dos aristas
+      cuyos tramos se cruzan, las marca en rojo, invierte el segmento de en
+      medio y muestra cómo la distancia total baja. Termina cuando ningún
+      cambio reduce más la distancia.</p>
+
+    <div class="anim rise" id="anim2opt">
+      <div class="anim-bar">
+        <button type="button" class="primary" data-act="play">▶ Iniciar</button>
+        <button type="button" data-act="pause">⏸ Pausar</button>
+        <button type="button" data-act="reset">↺ Nueva ruta</button>
+        <div class="stat">
+          <span>Iteración <b data-stat="iter">0</b></span>
+          <span>Mejoras <b data-stat="moves">0</b></span>
+          <span>Distancia <b data-stat="dist">— </b></span>
+        </div>
+      </div>
+      <div class="anim-stage">
+        <svg id="anim-svg" viewBox="0 0 800 420"></svg>
+      </div>
+      <div class="anim-caption" id="anim-cap">
+        Presiona <b>Iniciar</b> para arrancar la simulación.
+      </div>
+    </div>
   </div>
 </section>
 
@@ -762,10 +831,57 @@ retornar mejor_ruta</pre>
   </div>
 </section>
 
+<!-- §9.5 · Comparativa con rutas reales (OSRM) — visible sólo si el fetch tuvo éxito -->
+<section id="osrm-section">
+  <div class="wrap">
+    <div class="label"><span>§9 · Anexo experimental</span><span>Rutas reales</span></div>
+    <h2>Comparación con rutas reales sobre calles.</h2>
+  </div>
+  <div class="wrap narrow">
+    <p>El informe principal usa distancias <em>geodésicas</em> (Haversine):
+      la línea recta sobre la superficie de la Tierra. Pero un vehículo en
+      la realidad maneja por <strong>calles</strong>, con rodeos, sentidos
+      viales y semáforos.</p>
+    <p>Para tener una comparación rápida tomamos las cuatro rutas que
+      construyó nuestro algoritmo y le pedimos al servicio público
+      <strong>OSRM</strong> (<em>Open Source Routing Machine</em>) que
+      calcule la distancia <em>real</em> recorrida sobre la red vial de São
+      Paulo siguiendo el mismo orden de visita. El resultado se muestra
+      abajo: distancia real, factor de inflación (cuántas veces más larga
+      es la ruta real que la geodésica) y polilíneas dibujadas sobre el
+      mapa.</p>
+    <table id="osrm-table">
+      <thead>
+        <tr><th>Vehículo</th><th>Pedidos</th><th>Haversine (km)</th><th>OSRM real (km)</th><th>Factor</th></tr>
+      </thead>
+      <tbody id="osrm-tbody"></tbody>
+    </table>
+  </div>
+  <div class="wrap">
+    <div class="compare-grid">
+      <div>
+        <h4>Rutas Haversine (línea recta sobre la esfera)</h4>
+        <div class="mini-map" id="map-haver"></div>
+      </div>
+      <div>
+        <h4>Rutas reales (calles de São Paulo · vía OSRM)</h4>
+        <div class="mini-map" id="map-real"></div>
+      </div>
+    </div>
+    <p style="font-size:11px;color:#888;margin-top:6px">
+      Datos obtenidos de <code>router.project-osrm.org</code> (servidor
+      público de demostración de OSRM, basado en OpenStreetMap). El factor
+      de inflación típico para reparto urbano oscila entre 1.3 y 1.8x; es
+      esperable que las rutas reales sean entre 30 % y 80 % más largas que
+      las geodésicas.
+    </p>
+  </div>
+</section>
+
 <!-- VISOR DE DOCUMENTOS -->
 <section>
   <div class="wrap">
-    <div class="label rise"><span>§9 · Documentos</span><span>Visor</span></div>
+    <div class="label rise"><span>§10 · Documentos</span><span>Visor</span></div>
     <h2 class="rise">Documentos del proyecto.</h2>
   </div>
   <div class="wrap narrow">
@@ -1022,6 +1138,275 @@ retornar mejor_ruta</pre>
     });
     mio.observe(mapWrap);
   }
+
+  // ====================================================================
+  // ANIMACIÓN 2-OPT (caso de juguete, NO usa datos del ejercicio)
+  // ====================================================================
+  (function twoOptAnimation(){
+    const svg  = document.getElementById('anim-svg');
+    const cap  = document.getElementById('anim-cap');
+    const stat = {
+      iter:  document.querySelector('[data-stat="iter"]'),
+      moves: document.querySelector('[data-stat="moves"]'),
+      dist:  document.querySelector('[data-stat="dist"]')
+    };
+    if (!svg) return;
+
+    const W = 800, H = 420, PAD = 30;
+    const N_POINTS = 14;
+    let pts = [], tour = [], dist = 0;
+    let iter = 0, moves = 0;
+    let playing = false, finished = false;
+    let timer = null;
+    const ns = 'http://www.w3.org/2000/svg';
+
+    function dist2(a, b){
+      const dx = pts[a].x - pts[b].x, dy = pts[a].y - pts[b].y;
+      return Math.hypot(dx, dy);
+    }
+    function tourDist(t){
+      let d = 0;
+      for (let i = 0; i < t.length - 1; i++) d += dist2(t[i], t[i+1]);
+      return d;
+    }
+
+    function rng(seed){let s=seed;return ()=>{s=(s*9301+49297)%233280;return s/233280}}
+    function init(){
+      svg.innerHTML = '';
+      const r = rng(Date.now() & 0xfffff);
+      pts = [];
+      for (let i = 0; i < N_POINTS; i++) {
+        pts.push({
+          x: PAD + r() * (W - 2*PAD),
+          y: PAD + r() * (H - 2*PAD)
+        });
+      }
+      // Tour inicial: orden aleatorio (garantiza cruces)
+      tour = [...Array(N_POINTS).keys()];
+      for (let i = tour.length - 1; i > 0; i--) {
+        const j = Math.floor(r() * (i + 1));
+        [tour[i], tour[j]] = [tour[j], tour[i]];
+      }
+      tour.push(tour[0]); // ciclo cerrado
+      dist = tourDist(tour);
+      iter = 0; moves = 0; finished = false;
+      stat.iter.textContent  = iter;
+      stat.moves.textContent = moves;
+      stat.dist.textContent  = dist.toFixed(0);
+      render([], null);
+      cap.innerHTML = 'Ruta inicial generada al azar. Tiene cruces evidentes. <b>2-opt</b> los va a deshacer paso a paso.';
+    }
+
+    function render(highlights, inverted){
+      svg.innerHTML = '';
+      // Aristas del tour actual
+      for (let i = 0; i < tour.length - 1; i++) {
+        const a = pts[tour[i]], b = pts[tour[i+1]];
+        const line = document.createElementNS(ns, 'line');
+        line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+        line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+        const isHi = highlights.includes(i);
+        line.setAttribute('stroke', isHi ? '#ff3b00' : '#9ec5ff');
+        line.setAttribute('stroke-width', isHi ? 3 : 1.6);
+        line.setAttribute('opacity', isHi ? 1 : 0.85);
+        svg.appendChild(line);
+      }
+      // Segmento que se va a invertir (resaltado en amarillo)
+      if (inverted) {
+        for (let k = inverted.start; k < inverted.end; k++) {
+          const a = pts[tour[k]], b = pts[tour[k+1]];
+          const line = document.createElementNS(ns, 'line');
+          line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+          line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+          line.setAttribute('stroke', '#ffd400');
+          line.setAttribute('stroke-width', 2.5);
+          line.setAttribute('opacity', 0.9);
+          line.setAttribute('stroke-dasharray', '5 4');
+          svg.appendChild(line);
+        }
+      }
+      // Puntos
+      pts.forEach((p, idx) => {
+        const c = document.createElementNS(ns, 'circle');
+        c.setAttribute('cx', p.x); c.setAttribute('cy', p.y);
+        c.setAttribute('r', 4.5);
+        c.setAttribute('fill', '#fbfaf7');
+        c.setAttribute('stroke', '#101113');
+        c.setAttribute('stroke-width', 1);
+        svg.appendChild(c);
+      });
+    }
+
+    // Buscar la primera mejora 2-opt
+    function findImprovement(){
+      const n = tour.length - 1;
+      for (let i = 0; i < n - 2; i++) {
+        for (let j = i + 2; j < n; j++) {
+          if (i === 0 && j === n - 1) continue;
+          const a = tour[i], b = tour[i+1], c = tour[j], d = tour[j+1];
+          const before = dist2(a,b) + dist2(c,d);
+          const after  = dist2(a,c) + dist2(b,d);
+          if (after + 0.001 < before) return { i, j, gain: before - after };
+        }
+      }
+      return null;
+    }
+
+    function step(){
+      iter++;
+      stat.iter.textContent = iter;
+      const move = findImprovement();
+      if (!move) {
+        finished = true; playing = false;
+        cap.innerHTML = `<b>Óptimo local alcanzado.</b> Después de ${iter} iteraciones y ${moves} mejoras, ningún cambio reduce más la distancia. Esta no es necesariamente la mejor ruta global, pero sí mejor que sus vecinas cercanas.`;
+        render([], null);
+        return;
+      }
+      // 1. Marcar las dos aristas a quitar
+      render([move.i, move.j], { start: move.i + 1, end: move.j });
+      cap.innerHTML = `Iteración ${iter}. Se detectó un par de aristas (en rojo) que al invertirse acortarían la ruta en <b>${move.gain.toFixed(1)} u</b>. El segmento amarillo discontinuo es el que vamos a voltear.`;
+
+      // 2. Después de un breve delay, aplicar la inversión
+      setTimeout(() => {
+        const newTour = tour.slice(0, move.i + 1)
+                        .concat(tour.slice(move.i + 1, move.j + 1).reverse())
+                        .concat(tour.slice(move.j + 1));
+        tour = newTour;
+        moves++;
+        dist = tourDist(tour);
+        stat.moves.textContent = moves;
+        stat.dist.textContent  = dist.toFixed(0);
+        render([], null);
+        cap.innerHTML = `Mejora aplicada. Distancia total ahora: <b>${dist.toFixed(0)} u</b>. Buscando el siguiente cruce…`;
+        if (playing) timer = setTimeout(step, 850);
+      }, 750);
+    }
+
+    function play(){
+      if (finished) { init(); }
+      playing = true;
+      cap.innerHTML = 'Corriendo 2-opt…';
+      timer = setTimeout(step, 200);
+    }
+    function pause(){
+      playing = false;
+      clearTimeout(timer);
+      cap.innerHTML = 'Pausado. Presiona <b>Iniciar</b> para continuar.';
+    }
+    function reset(){
+      clearTimeout(timer);
+      playing = false;
+      init();
+    }
+
+    // Bind buttons
+    document.querySelectorAll('#anim2opt [data-act]').forEach(btn => {
+      const act = btn.dataset.act;
+      btn.addEventListener('click', () => {
+        if (act === 'play')  play();
+        if (act === 'pause') pause();
+        if (act === 'reset') reset();
+      });
+    });
+
+    init();
+    // Auto-play cuando entra al viewport por primera vez
+    let started = false;
+    const io = new IntersectionObserver(es => {
+      es.forEach(e => {
+        if (e.isIntersecting && !started) {
+          started = true;
+          setTimeout(play, 600);
+        }
+      });
+    }, { threshold: 0.3 });
+    io.observe(document.getElementById('anim2opt'));
+  })();
+
+  // ====================================================================
+  // SECCIÓN OSRM: rutas reales sobre calles (oculta si falla)
+  // ====================================================================
+  (async function loadOSRM(){
+    const sec = document.getElementById('osrm-section');
+    if (!sec) return;
+    try {
+      const fetchRoute = async (coords) => {
+        const path = coords.map(c => `${c[1]},${c[0]}`).join(';');
+        const url = `https://router.project-osrm.org/route/v1/driving/${path}?overview=full&geometries=geojson`;
+        const r = await fetch(url);
+        if (!r.ok) throw new Error('OSRM HTTP ' + r.status);
+        const j = await r.json();
+        if (!j.routes || !j.routes[0]) throw new Error('OSRM sin ruta');
+        return {
+          distance: j.routes[0].distance / 1000, // km
+          coords: j.routes[0].geometry.coordinates.map(c => [c[1], c[0]])
+        };
+      };
+
+      // Construir coordenadas reales por ruta usando datos ya definidos arriba
+      const realRoutes = [];
+      for (const r of RUTAS) {
+        const coords = r.opt.map(coord);
+        const real = await fetchRoute(coords);
+        realRoutes.push({ ...r, real });
+        await new Promise(res => setTimeout(res, 200)); // rate limit cortés
+      }
+
+      // Tabla comparativa
+      const haversineByRoute = [64.55, 55.14, 44.47, 4.35];
+      const tbody = document.getElementById('osrm-tbody');
+      let sumH = 0, sumR = 0;
+      realRoutes.forEach((r, i) => {
+        const h = haversineByRoute[i];
+        const realKm = r.real.distance;
+        sumH += h; sumR += realKm;
+        const factor = (realKm / h).toFixed(2);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.id}</td><td>${r.nodos.length}</td>
+          <td>${h.toFixed(2)}</td><td>${realKm.toFixed(2)}</td><td>×${factor}</td>`;
+        tbody.appendChild(tr);
+      });
+      const totalTr = document.createElement('tr');
+      totalTr.innerHTML = `<td>Total</td><td>30</td>
+        <td>${sumH.toFixed(2)}</td><td>${sumR.toFixed(2)}</td>
+        <td>×${(sumR/sumH).toFixed(2)}</td>`;
+      tbody.appendChild(totalTr);
+
+      // Mini-mapas
+      const tile = () => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { maxZoom: 19, attribution:'© OpenStreetMap' });
+
+      const mapH = L.map('map-haver', { zoomControl:false, scrollWheelZoom:false })
+                    .setView(DEPOT, 11);
+      tile().addTo(mapH);
+      L.circleMarker(DEPOT, {radius:5, color:'#101113', fillColor:'#101113', fillOpacity:1}).addTo(mapH);
+      RUTAS.forEach(r => {
+        L.polyline(r.opt.map(coord), { color:r.color, weight:3, opacity:0.85 }).addTo(mapH);
+      });
+
+      const mapR = L.map('map-real', { zoomControl:false, scrollWheelZoom:false })
+                    .setView(DEPOT, 11);
+      tile().addTo(mapR);
+      L.circleMarker(DEPOT, {radius:5, color:'#101113', fillColor:'#101113', fillOpacity:1}).addTo(mapR);
+      realRoutes.forEach(r => {
+        L.polyline(r.real.coords, { color:r.color, weight:3, opacity:0.85 }).addTo(mapR);
+      });
+
+      // Sincronizar zoom y vista entre los dos mapas
+      const all = [];
+      RUTAS.forEach(r => r.opt.forEach(n => all.push(coord(n))));
+      const bounds = L.latLngBounds(all).pad(0.1);
+      mapH.fitBounds(bounds); mapR.fitBounds(bounds);
+      setTimeout(() => { mapH.invalidateSize(); mapR.invalidateSize(); }, 300);
+
+      sec.classList.add('ready');
+      console.log('[OSRM] sección cargada. Suma Haversine:', sumH.toFixed(2),
+                  'km, OSRM:', sumR.toFixed(2), 'km, factor:', (sumR/sumH).toFixed(2));
+    } catch (err) {
+      console.warn('[OSRM] no disponible, sección oculta:', err);
+      // sec sigue display:none; nada más que hacer
+    }
+  })();
 
   // === VISOR DE PDFs (tabs) ===
   const pdfTabs = document.querySelectorAll('#pdfview .tabs button');
