@@ -1372,34 +1372,65 @@ retornar mejor_ruta</pre>
         <td>×${(sumR/sumH).toFixed(2)}</td>`;
       tbody.appendChild(totalTr);
 
-      // Mini-mapas
+      // IMPORTANTE: mostrar la sección ANTES de inicializar los mapas
+      // para que Leaflet pueda medir dimensiones correctamente. Si los
+      // contenedores tienen 0x0 al hacer L.map(), el mapa arranca con
+      // vista global y nunca se acomoda bien.
+      sec.classList.add('ready');
+
+      // Esperar un frame para que el layout se aplique
+      await new Promise(r => requestAnimationFrame(() => r()));
+      await new Promise(r => setTimeout(r, 30));
+
+      // Calcular bounds una sola vez (incluye depósito y todas las paradas)
+      const all = [DEPOT];
+      RUTAS.forEach(r => r.opt.forEach(n => all.push(coord(n))));
+      realRoutes.forEach(r => r.real.coords.forEach(c => all.push(c)));
+      const bounds = L.latLngBounds(all).pad(0.05);
+
       const tile = () => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         { maxZoom: 19, attribution:'© OpenStreetMap' });
 
-      const mapH = L.map('map-haver', { zoomControl:false, scrollWheelZoom:false })
-                    .setView(DEPOT, 11);
+      // Mapa Haversine
+      const mapH = L.map('map-haver', {
+        zoomControl: false, scrollWheelZoom: false,
+        attributionControl: false
+      });
       tile().addTo(mapH);
+      mapH.fitBounds(bounds);
       L.circleMarker(DEPOT, {radius:5, color:'#101113', fillColor:'#101113', fillOpacity:1}).addTo(mapH);
       RUTAS.forEach(r => {
         L.polyline(r.opt.map(coord), { color:r.color, weight:3, opacity:0.85 }).addTo(mapH);
       });
 
-      const mapR = L.map('map-real', { zoomControl:false, scrollWheelZoom:false })
-                    .setView(DEPOT, 11);
+      // Mapa OSRM (calles reales)
+      const mapR = L.map('map-real', {
+        zoomControl: false, scrollWheelZoom: false,
+        attributionControl: false
+      });
       tile().addTo(mapR);
+      mapR.fitBounds(bounds);
       L.circleMarker(DEPOT, {radius:5, color:'#101113', fillColor:'#101113', fillOpacity:1}).addTo(mapR);
       realRoutes.forEach(r => {
         L.polyline(r.real.coords, { color:r.color, weight:3, opacity:0.85 }).addTo(mapR);
       });
 
-      // Sincronizar zoom y vista entre los dos mapas
-      const all = [];
-      RUTAS.forEach(r => r.opt.forEach(n => all.push(coord(n))));
-      const bounds = L.latLngBounds(all).pad(0.1);
-      mapH.fitBounds(bounds); mapR.fitBounds(bounds);
-      setTimeout(() => { mapH.invalidateSize(); mapR.invalidateSize(); }, 300);
+      // Refrescar tamaño y re-encuadrar tras el primer pintado, por si
+      // los tiles aún no habían cargado al hacer fitBounds.
+      const refit = () => {
+        mapH.invalidateSize(); mapR.invalidateSize();
+        mapH.fitBounds(bounds); mapR.fitBounds(bounds);
+      };
+      setTimeout(refit, 120);
+      setTimeout(refit, 500);
+      window.addEventListener('resize', refit);
 
-      sec.classList.add('ready');
+      // Cuando la sección entra al viewport, vuelve a re-encuadrar
+      const iov = new IntersectionObserver(es => {
+        es.forEach(e => { if (e.isIntersecting) refit(); });
+      }, { threshold: 0.1 });
+      iov.observe(sec);
+
       console.log('[OSRM] sección cargada. Suma Haversine:', sumH.toFixed(2),
                   'km, OSRM:', sumR.toFixed(2), 'km, factor:', (sumR/sumH).toFixed(2));
     } catch (err) {
